@@ -5,8 +5,8 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 /**
  * Password hashing and verification utilities.
  *
- * <p>This application stores only BCrypt hashes in the database (never plaintext). The cost factor is centralized
- * here so it can be tuned without touching authentication flows.</p>
+ * This application stores only BCrypt hashes in the database (never plaintext). The cost factor is centralized
+ * here so it can be tuned without touching authentication flows.
  */
 public final class PasswordUtil {
     private PasswordUtil() {}

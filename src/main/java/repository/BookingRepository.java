@@ -13,9 +13,27 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data access layer for passenger bookings and booking-requests.
+ *
+ * This repository uses explicit transactions and row locks to avoid race
+ * conditions such as overbooking seats or multiple drivers accepting the
+ * same request.
+ */
 public final class BookingRepository {
     private BookingRepository() {}
 
+    /**
+     * Creates an accepted booking for an existing ride and decrements ride seats atomically.
+     *
+     * Returns false when the ride does not exist, is not open, has already departed, the
+     * passenger account is not active, or there is insufficient remaining capacity.
+     *
+     * @param passengerEmail authenticated passenger email
+     * @param rideId ride identifier
+     * @param seatsRequested number of seats to book
+     * @return true if booking is created and seats are decremented
+     */
     public static boolean bookExistingRide(String passengerEmail, String rideId, int seatsRequested) {
         if (seatsRequested <= 0) return false;
 
@@ -105,6 +123,17 @@ public final class BookingRepository {
         }
     }
 
+    /**
+     * Creates a pending booking request that is not yet assigned to a ride.
+     *
+     * The passenger identity is resolved server-side from the email for an active account.
+     *
+     * @param passengerEmail authenticated passenger email
+     * @param origin requested origin
+     * @param destination requested destination
+     * @param departureDate requested departure date/time string as provided by the UI
+     * @param seatsLeft seats requested (parameter name preserved from UI)
+     */
     public static void createBooking(String passengerEmail, String origin, String destination, String departureDate, int seatsLeft) {
         /*
          * Creates a pending passenger request not yet assigned to a ride (Ride_ID is NULL).
@@ -129,6 +158,12 @@ public final class BookingRepository {
         }
     }
 
+    /**
+     * Fetches upcoming bookings for a passenger, including both ride-linked bookings and unassigned requests.
+     *
+     * @param passengerEmail authenticated passenger email
+     * @return upcoming rides list ordered by departure ascending
+     */
     public static List<UpcomingRide> getUpcomingRidesForPassenger(String passengerEmail) {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
@@ -180,6 +215,15 @@ public final class BookingRepository {
         }
     }
 
+    /**
+     * Fetches non-upcoming booking history for a passenger.
+     *
+     * Includes bookings that are cancelled, declined, completed, or whose linked ride is
+     * cancelled or completed.
+     *
+     * @param passengerEmail authenticated passenger email
+     * @return history list ordered most recent first
+     */
     public static List<UpcomingRide> getRideHistoryForPassenger(String passengerEmail) {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
@@ -234,6 +278,16 @@ public final class BookingRepository {
         }
     }
 
+    /**
+     * Cancels a passenger booking or booking-request.
+     *
+     * If the booking is ride-linked and accepted, capacity is returned to the ride.
+     * Uses row locks inside a transaction to avoid races with other updates.
+     *
+     * @param passengerEmail authenticated passenger email
+     * @param bookingId booking identifier
+     * @return true if a row is updated to cancelled
+     */
     public static boolean cancelUpcomingRideForPassenger(String passengerEmail, String bookingId) {
         /*
          * Cancels a passenger booking/request and (when applicable) returns seats to the ride.
@@ -335,6 +389,12 @@ public final class BookingRepository {
         }
     }
 
+    /**
+     * Lists unassigned passenger requests that drivers can fulfill by creating a matching ride.
+     *
+     * @param driverEmail authenticated driver email (currently not used for filtering)
+     * @return list of pending, unassigned requests
+     */
     public static List<PassengerRequest> getPassengerRequestsForDriver(String driverEmail) {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
@@ -376,6 +436,16 @@ public final class BookingRepository {
         }
     }
 
+    /**
+     * Accepts a pending, unassigned passenger request by creating a ride under the driver and linking the booking.
+     *
+     * Only "accepted" is supported; other statuses return false.
+     *
+     * @param driverEmail authenticated driver email
+     * @param bookingId booking identifier for the request
+     * @param newStatus requested status (must be accepted)
+     * @return true if the booking row is updated
+     */
     public static boolean updatePassengerRequestStatus(String driverEmail, String bookingId, String newStatus) {
         if (!"accepted".equalsIgnoreCase(newStatus)) {
             return false;

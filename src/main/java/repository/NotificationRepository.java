@@ -9,6 +9,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data access layer for user notifications.
+ *
+ * Methods enforce ownership by joining through the authenticated user's email.
+ */
 public final class NotificationRepository {
     private NotificationRepository() {}
 

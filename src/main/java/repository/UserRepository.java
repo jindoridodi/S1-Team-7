@@ -11,9 +11,21 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Data access layer for user lifecycle operations.
+ *
+ * This repository enforces authentication-related constraints such as active account status and derives roles
+ * from presence in role tables.
+ */
 public final class UserRepository {
     private UserRepository() {}
 
+    /**
+     * Checks whether an active user account exists for the given email.
+     *
+     * @param email user email
+     * @return true if an active account exists
+     */
     public static boolean hasUser(String email) {
         /* Checks for an existing active account to prevent duplicate registrations. */
         String sql = "SELECT 1 FROM Users WHERE Email = ? AND Account_Status = 'active' LIMIT 1";
@@ -28,6 +40,21 @@ public final class UserRepository {
         }
     }
 
+    /**
+     * Creates a new user account and associated role rows.
+     *
+     * Returns null when an active user already exists for the email.
+     *
+     * @param firstName first name
+     * @param lastName last name
+     * @param email email address (used as login key)
+     * @param sjsuId campus identifier
+     * @param gender user gender string as provided by UI
+     * @param password plaintext password (validated and hashed)
+     * @param roles set containing driver and/or passenger
+     * @param licenseNumber required when creating a driver role
+     * @return created user model or null if account exists
+     */
     public static User createUser(
             String firstName,
             String lastName,
@@ -91,6 +118,13 @@ public final class UserRepository {
         }
     }
 
+    /**
+     * Authenticates an active account and returns the user profile with derived roles.
+     *
+     * @param email login email
+     * @param password plaintext password
+     * @return user if authentication succeeds, otherwise null
+     */
     public static User authenticate(String email, String password) {
         /*
          * Loads the active user profile for login and derives roles via LEFT JOINs.
@@ -133,6 +167,11 @@ public final class UserRepository {
         }
     }
 
+    /**
+     * Soft-deletes a user account by switching account status.
+     *
+     * @param email email of the account to delete
+     */
     public static void deleteUser(String email) {
         /* Soft-deletes the account so historical references remain valid. */
         String sql = "UPDATE Users SET Account_Status = 'deleted' WHERE Email = ?";
@@ -145,6 +184,13 @@ public final class UserRepository {
         }
     }
 
+    /**
+     * Updates the password for an active account.
+     *
+     * @param email account email
+     * @param newPassword plaintext password (validated and hashed)
+     * @return true if the password is updated
+     */
     public static boolean updatePassword(String email, String newPassword) {
         if (!PasswordUtil.isStrongPassword(newPassword)) return false;
         /* Updates password only for active accounts to avoid reactivating soft-deleted users. */
@@ -159,6 +205,12 @@ public final class UserRepository {
         }
     }
 
+    /**
+     * Returns the driver's verification status for the active account.
+     *
+     * @param email authenticated user email
+     * @return verification status string or null if not a driver
+     */
     public static String getDriverVerificationStatus(String email) {
         /* Reads the driver verification gate used to allow ride/vehicle management actions. */
         String sql =

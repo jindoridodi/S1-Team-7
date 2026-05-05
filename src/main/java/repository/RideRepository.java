@@ -10,9 +10,19 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data access layer for ride listings and ride management.
+ *
+ * Callers rely on RideStatusStore to keep derived ride status consistent before reading or mutating ride state.
+ */
 public final class RideRepository {
     private RideRepository() {}
 
+    /**
+     * Returns rides that can be booked by passengers.
+     *
+     * @return list of upcoming rides that are open and have remaining seats
+     */
     public static List<Ride> getAvailableRides() {
         try (Connection c = DBConnection.get()) {
             /*
@@ -92,6 +102,16 @@ public final class RideRepository {
         }
     }
 
+    /**
+     * Creates a new ride offer owned by the authenticated driver.
+     *
+     * @param driverEmail authenticated driver email
+     * @param vehicleId vehicle identifier belonging to the driver
+     * @param origin ride origin
+     * @param destination ride destination
+     * @param departureDate departure date/time string as provided by the UI
+     * @param seatsLeft number of available seats for booking
+     */
     public static void createRide(String driverEmail, String vehicleId, String origin, String destination, String departureDate, int seatsLeft) {
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);

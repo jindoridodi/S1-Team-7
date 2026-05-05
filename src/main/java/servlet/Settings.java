@@ -39,9 +39,9 @@ public class Settings extends HttpServlet {
     /**
      * Validates the password change form and updates the stored credentials.
      *
-     * <p>The servlet keeps validation server-side so the password policy cannot
+     * The servlet keeps validation server-side so the password policy cannot
      * be bypassed by submitting a custom request. Any validation error is stored
-     * on the request and echoed back by the JSP.</p>
+     * on the request and echoed back by the JSP.
      *
      * @param req current form submission containing the password fields
      * @param resp response used to redirect unauthenticated users

@@ -13,6 +13,18 @@ public class PassengerRequest {
     private final String bookingStatus;
     private final String bookingTimestamp;
 
+    /**
+     * Creates a driver-facing passenger request row.
+     *
+     * @param bookingId booking identifier
+     * @param passengerName formatted passenger name
+     * @param origin requested origin
+     * @param destination requested destination
+     * @param departureDate requested departure date/time
+     * @param requestedSeats seats requested
+     * @param bookingStatus current request status
+     * @param bookingTimestamp request creation time
+     */
     public PassengerRequest(
         String bookingId,
         String passengerName,

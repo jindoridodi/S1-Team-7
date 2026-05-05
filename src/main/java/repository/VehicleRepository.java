@@ -10,9 +10,21 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data access layer for driver vehicle management.
+ *
+ * Operations are guarded by the authenticated email and active account status, and vehicles are soft-deleted by
+ * switching Vehicle_Status rather than removing rows.
+ */
 public final class VehicleRepository {
     private VehicleRepository() {}
 
+    /**
+     * Lists active vehicles for the authenticated driver.
+     *
+     * @param ownerEmail authenticated driver email
+     * @return active vehicles owned by the driver
+     */
     public static List<Vehicle> getVehiclesForOwner(String ownerEmail) {
         /*
          * Fetches vehicles owned by the currently authenticated driver.
@@ -50,6 +62,17 @@ public final class VehicleRepository {
         }
     }
 
+    /**
+     * Adds a new vehicle to the authenticated driver's account.
+     *
+     * @param ownerEmail authenticated driver email
+     * @param make vehicle make
+     * @param model vehicle model
+     * @param color vehicle color
+     * @param plate license plate
+     * @param totalSeats total seat capacity
+     * @param insuranceNum insurance identifier
+     */
     public static void addVehicle(String ownerEmail, String make, String model,
                                   String color, String plate, int totalSeats, String insuranceNum) {
         /*
@@ -81,6 +104,18 @@ public final class VehicleRepository {
         }
     }
 
+    /**
+     * Updates an existing vehicle only if it is owned by the authenticated driver and still active.
+     *
+     * @param ownerEmail authenticated driver email
+     * @param vehicleId vehicle identifier
+     * @param make vehicle make
+     * @param model vehicle model
+     * @param color vehicle color
+     * @param plate license plate
+     * @param totalSeats total seat capacity
+     * @param insuranceNum insurance identifier
+     */
     public static void updateVehicle(String ownerEmail, String vehicleId, String make, String model,
                                      String color, String plate, int totalSeats, String insuranceNum) {
         /*

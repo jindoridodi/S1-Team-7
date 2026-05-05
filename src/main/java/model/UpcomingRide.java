@@ -13,6 +13,18 @@ public class UpcomingRide {
     private final String driverName;
     private final String vehicleInfo;
 
+    /**
+     * Creates an upcoming ride row for passenger dashboards.
+     *
+     * @param bookingId booking identifier
+     * @param bookingStatus booking status string
+     * @param origin origin display value
+     * @param destination destination display value
+     * @param departureDate departure date/time display value
+     * @param seats seats requested or remaining seats depending on context
+     * @param driverName formatted driver name (may be null when unassigned)
+     * @param vehicleInfo formatted vehicle info (may be null when unassigned)
+     */
     public UpcomingRide(
         String bookingId,
         String bookingStatus,
