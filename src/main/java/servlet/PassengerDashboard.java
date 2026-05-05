@@ -12,7 +12,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import model.Ride;
 import model.User;
-import store.AppStore;
+import repository.BookingRepository;
+import repository.NotificationRepository;
+import repository.RideRepository;
 
 /**
  * Passenger dashboard page for authenticated non-driver users.
@@ -43,13 +45,13 @@ public class PassengerDashboard extends HttpServlet {
 
         if ("showCreateBookingForm".equals(action)) {
             // Show currently available rides so the passenger can request one by Ride_ID.
-            req.setAttribute("availableRides", AppStore.getAvailableRides());
+            req.setAttribute("availableRides", RideRepository.getAvailableRides());
             req.getRequestDispatcher("/WEB-INF/views/create-booking.jsp").forward(req, resp);
             return;
         }
 
         if ("showRideHistory".equals(action)) {
-            req.setAttribute("rideHistory", AppStore.getRideHistoryForPassenger(user.getEmail()));
+            req.setAttribute("rideHistory", BookingRepository.getRideHistoryForPassenger(user.getEmail()));
             req.getRequestDispatcher("/WEB-INF/views/passenger-ride-history.jsp").forward(req, resp);
             return;
         }
@@ -60,7 +62,7 @@ public class PassengerDashboard extends HttpServlet {
         // `searchDate` comes from home.jsp as yyyy-MM-dd.
         String dateFilter = safe(req.getParameter("searchDate"));
 
-        List<Ride> rides = AppStore.getAvailableRides();
+        List<Ride> rides = RideRepository.getAvailableRides();
         List<Ride> filteredRides = new ArrayList<>();
 
         for (Ride ride : rides) {
@@ -86,8 +88,8 @@ public class PassengerDashboard extends HttpServlet {
         }
 
         req.setAttribute("availableRides", filteredRides);
-        req.setAttribute("notifications", AppStore.getNotificationsForUser(user.getEmail()));
-        req.setAttribute("upcomingRides", AppStore.getUpcomingRidesForPassenger(user.getEmail()));
+        req.setAttribute("notifications", NotificationRepository.getNotificationsForUser(user.getEmail()));
+        req.setAttribute("upcomingRides", BookingRepository.getUpcomingRidesForPassenger(user.getEmail()));
 
         req.getRequestDispatcher("/WEB-INF/views/passenger-dashboard.jsp").forward(req, resp);
     }
@@ -113,7 +115,7 @@ public class PassengerDashboard extends HttpServlet {
                     int seats = Integer.parseInt(seatsNeeded);
                     // Standardize HTML datetime-local 'T' separator for MySQL DATETIME.
                     String sqlTimestamp = departureDate.replace("T", " ") + ":00";
-                    AppStore.createBooking(user.getEmail(), origin, destination, sqlTimestamp, seats);
+                    BookingRepository.createBooking(user.getEmail(), origin, destination, sqlTimestamp, seats);
                 } catch (NumberFormatException ignored) {
                 }
             }
@@ -122,14 +124,14 @@ public class PassengerDashboard extends HttpServlet {
         if ("cancelUpcomingRide".equals(action)) {
             String bookingId = safe(req.getParameter("bookingId"));
             if (!bookingId.isBlank()) {
-                AppStore.cancelUpcomingRideForPassenger(user.getEmail(), bookingId);
+                BookingRepository.cancelUpcomingRideForPassenger(user.getEmail(), bookingId);
             }
         }
 
         if ("markNotifRead".equals(action)) {
             String notifId = safe(req.getParameter("notifId"));
             if (!notifId.isBlank()) {
-                AppStore.markNotificationRead(notifId);
+                NotificationRepository.markNotificationRead(notifId);
             }
         }
 

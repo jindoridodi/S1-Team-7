@@ -1,7 +1,7 @@
 package servlet;
 
 import model.User;
-import store.AppStore;
+import repository.UserRepository;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -41,7 +41,7 @@ public class Login extends HttpServlet {
             return;
         }
 
-        User user = AppStore.authenticate(email, password);
+        User user = UserRepository.authenticate(email, password);
         if (user == null) {
             req.setAttribute("errorPassword", "Incorrect email or password.");
             req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);

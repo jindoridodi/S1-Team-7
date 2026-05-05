@@ -1,7 +1,7 @@
 package servlet;
 
 import model.User;
-import store.AppStore;
+import repository.UserRepository;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -28,7 +28,7 @@ public class DeleteAccount extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         User user = (User) req.getSession(true).getAttribute("currentUser");
         if (user != null) {
-            AppStore.deleteUser(user.getEmail());
+            UserRepository.deleteUser(user.getEmail());
         }
         // Always invalidate, even if no user was found, to enforce sign-out.
         req.getSession(true).invalidate();

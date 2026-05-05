@@ -1,7 +1,8 @@
 package servlet;
 
 import model.User;
-import store.AppStore;
+import repository.PasswordUtil;
+import repository.UserRepository;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -72,7 +73,7 @@ public class Settings extends HttpServlet {
         // Apply the password policy before attempting the database update.
         if (newPassword.isBlank()) {
             req.setAttribute("errorNewPassword", "New password is required.");
-        } else if (!AppStore.isStrongPassword(newPassword)) {
+        } else if (!PasswordUtil.isStrongPassword(newPassword)) {
             req.setAttribute("errorNewPassword",
                 "Password must be at least 8 characters and include 1 uppercase letter, 1 lowercase letter, and 1 number.");
         }
@@ -97,10 +98,10 @@ public class Settings extends HttpServlet {
         }
 
         // Persist the change only after all validation passes.
-        if (AppStore.updatePassword(user.getEmail(), newPassword)) {
+        if (UserRepository.updatePassword(user.getEmail(), newPassword)) {
             req.setAttribute("successMessage", "Password changed successfully.");
             // Reload the user because the session object is immutable and may now be stale.
-            User updated = AppStore.authenticate(user.getEmail(), newPassword);
+            User updated = UserRepository.authenticate(user.getEmail(), newPassword);
             if (updated != null) {
                 req.getSession(true).setAttribute("currentUser", updated);
             }
