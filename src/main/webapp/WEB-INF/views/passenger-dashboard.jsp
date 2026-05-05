@@ -196,32 +196,25 @@ if (upcomingRides == null) {
                       <% if (!formattedTime.isBlank()) { %>
                         <small class="ride-meta">Time: <%= formattedTime %></small>
                       <% } %>
-                     <% if (ride.getSeatsLeft() == 0) { %>
-                      <small class="ride-meta" style="color:red;">
-                        Full
-                      </small>
-                    <% } else if (ride.getSeatsLeft() <= 2) { %>
-                      <small class="ride-meta" style="color:orange;">
-                        Few seats left: <%= ride.getSeatsLeft() %>
-                      </small>
-                    <% } else { %>
-                      <small class="ride-meta" style="color:green;">
-                        Seats left: <%= ride.getSeatsLeft() %>
-                      </small>
-                    <% } %>
+                      <% if (ride.getSeatsLeft() == 0) { %>
+                        <small class="ride-meta ride-meta--danger">Full</small>
+                      <% } else if (ride.getSeatsLeft() <= 2) { %>
+                        <small class="ride-meta ride-meta--warn">Few seats left: <%= ride.getSeatsLeft() %></small>
+                      <% } else { %>
+                        <small class="ride-meta ride-meta--success">Seats left: <%= ride.getSeatsLeft() %></small>
+                      <% } %>
                     </div>
                     <div class="ride-actions">
                       <% if (ride.getSeatsLeft() > 0 && "open".equalsIgnoreCase(ride.getStatus())) { %>
-                        <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
+                        <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form ride-book-form">
                           <input type="hidden" name="action" value="bookExistingRide" />
                           <input type="hidden" name="rideId" value="<%= ride.getId() %>" />
                           <input type="number"
                                  name="seatsRequested"
-                                 class="login-input"
+                                 class="ride-book-seats"
                                  min="1"
                                  max="<%= ride.getSeatsLeft() %>"
                                  value="1"
-                                 style="max-width: 110px;"
                                  required />
                           <button type="submit" class="request-approve">Book</button>
                         </form>

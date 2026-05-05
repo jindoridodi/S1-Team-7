@@ -278,9 +278,52 @@
   display: block;
 }
 
+.ride-meta--success {
+  color: #9af3cf;
+}
+
+.ride-meta--warn {
+  color: #f5b942;
+}
+
+.ride-meta--danger {
+  color: #ffb2b2;
+}
+
 .ride-actions {
   margin-top: auto;
   display: flex;
+}
+
+.ride-book-form {
+  width: 100%;
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: stretch;
+}
+
+.ride-book-form .request-approve {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.ride-book-seats {
+  max-width: 110px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+}
+
+.ride-book-seats:focus {
+  outline: none;
+  border-color: rgba(229, 168, 35, 0.6);
+  box-shadow: 0 0 0 3px rgba(229, 168, 35, 0.16);
 }
 
 .request-actions {
@@ -336,6 +379,10 @@
 .ride-item .dashboard-inline-form {
   width: 100%;
   display: block;
+}
+
+.ride-item .ride-book-form {
+  display: flex;
 }
 
 #no-rides.dashboard-empty {
