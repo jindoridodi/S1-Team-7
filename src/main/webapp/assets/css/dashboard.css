@@ -403,16 +403,23 @@
 
 .dashboard-pending {
   text-align: center;
-  padding: 2rem;
+  padding: clamp(2rem, 4vw, 3rem);
+  max-width: 760px;
+  margin: clamp(2rem, 5vh, 4rem) auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .dashboard-pending-lead {
   margin-top: 1rem;
+  max-width: 60ch;
 }
 
 .dashboard-pending-note {
   margin-top: 0.5rem;
   color: var(--text-dim);
+  max-width: 60ch;
 }
 
 .dashboard-pending-cta {

@@ -41,7 +41,6 @@ public class DriverDashboard extends HttpServlet {
             // Keep JSP rendering in sync with access control:
             // unverified drivers should see the pending verification screen.
             req.setAttribute("pendingVerification", true);
-            req.setAttribute("error", "Your driver account is pending verification.");
             req.getRequestDispatcher("/WEB-INF/views/driver-dashboard.jsp").forward(req, resp);
             return;
         }

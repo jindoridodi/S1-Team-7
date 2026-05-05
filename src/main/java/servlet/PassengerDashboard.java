@@ -96,11 +96,17 @@ req.setAttribute("availableRides", filteredRides);
         String action = safe(req.getParameter("action"));
 
         if ("processCreateBooking".equals(action)) {
-            // Legacy action name; bookings should be created by selecting a Ride_ID.
-            String rideId = safe(req.getParameter("rideId"));
-            if (!rideId.isBlank()) {
+            String origin = safe(req.getParameter("origin"));
+            String destination = safe(req.getParameter("destination"));
+            String departureDate = safe(req.getParameter("departureDate"));
+            String seatsNeeded = safe(req.getParameter("seatsLeft"));
+
+            if (!origin.isBlank() && !destination.isBlank() && !departureDate.isBlank() && !seatsNeeded.isBlank()) {
                 try {
-                    AppStore.requestSeatOnRide(user.getEmail(), Integer.parseInt(rideId));
+                    int seats = Integer.parseInt(seatsNeeded);
+                    // Standardize HTML datetime-local 'T' separator for MySQL DATETIME.
+                    String sqlTimestamp = departureDate.replace("T", " ") + ":00";
+                    AppStore.createBooking(user.getEmail(), origin, destination, sqlTimestamp, seats);
                 } catch (NumberFormatException ignored) {
                 }
             }
