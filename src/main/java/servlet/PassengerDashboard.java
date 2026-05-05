@@ -15,6 +15,7 @@ import model.User;
 import repository.BookingRepository;
 import repository.NotificationRepository;
 import repository.RideRepository;
+import repository.SavedRouteRepository;
 
 /**
  * Passenger dashboard page for authenticated non-driver users.
@@ -89,6 +90,7 @@ public class PassengerDashboard extends HttpServlet {
 
         req.setAttribute("availableRides", filteredRides);
         req.setAttribute("notifications", NotificationRepository.getNotificationsForUser(user.getEmail()));
+        req.setAttribute("savedRoutes", SavedRouteRepository.getRoutesForUser(user.getEmail()));
         req.setAttribute("upcomingRides", BookingRepository.getUpcomingRidesForPassenger(user.getEmail()));
 
         req.getRequestDispatcher("/WEB-INF/views/passenger-dashboard.jsp").forward(req, resp);
@@ -144,6 +146,21 @@ public class PassengerDashboard extends HttpServlet {
             String notifId = safe(req.getParameter("notifId"));
             if (!notifId.isBlank()) {
                 NotificationRepository.markNotificationRead(user.getEmail(), notifId);
+            }
+        }
+
+        if ("saveRoute".equals(action)) {
+            String start = safe(req.getParameter("startLocation"));
+            String end   = safe(req.getParameter("endLocation"));
+            if (!start.isBlank() && !end.isBlank()) {
+                SavedRouteRepository.saveRoute(user.getEmail(), start, end);
+            }
+        }
+        
+        if ("deleteRoute".equals(action)) {
+            String routeId = safe(req.getParameter("routeId"));
+            if (!routeId.isBlank()) {
+                SavedRouteRepository.deleteRoute(user.getEmail(), routeId);
             }
         }
 
