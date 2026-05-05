@@ -46,6 +46,12 @@ public class DriverDashboard extends HttpServlet {
         }
         
 
+        String error = safe(req.getParameter("error"));
+        if ("requestNotProcessed".equals(error)) {
+            req.setAttribute("error",
+                "Could not process that passenger request (it may have been accepted already, or you have no vehicle/seats available).");
+        }
+
         String action = safe(req.getParameter("action"));
 
         // Navigate to ride creation form if requested
@@ -81,6 +87,13 @@ public class DriverDashboard extends HttpServlet {
         User user = (User) req.getSession(true).getAttribute("currentUser");
         if (user == null) {
             resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+
+        // Enforce the same verification guard on POST actions.
+        String status = AppStore.getDriverVerificationStatus(user.getEmail());
+        if (status == null || !status.equalsIgnoreCase("verified")) {
+            resp.sendRedirect(req.getContextPath() + "/dashboard/driver?error=pendingVerification");
             return;
         }
 
@@ -167,7 +180,11 @@ public class DriverDashboard extends HttpServlet {
                 }
 
                 if (!nextStatus.isBlank()) {
-                    AppStore.updatePassengerRequestStatus(user.getEmail(), bookingId, nextStatus);
+                    boolean ok = AppStore.updatePassengerRequestStatus(user.getEmail(), bookingId, nextStatus);
+                    if (!ok) {
+                        resp.sendRedirect(req.getContextPath() + "/dashboard/driver?error=requestNotProcessed");
+                        return;
+                    }
                 }
             }
         }

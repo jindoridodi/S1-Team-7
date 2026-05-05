@@ -594,15 +594,16 @@ public final class AppStore {
 
             // Lock the booking request row.
             String bookingSelect =
-                "SELECT b.Status AS Booking_Status, b.User_ID, b.Origin, b.Destination, b.Departure_Date, b.Seats_Requested " +
+                "SELECT b.Status AS Booking_Status, b.Ride_ID, b.Origin, b.Destination, b.Departure_Date, b.Seats_Requested " +
                 "FROM Bookings b " +
                 "WHERE b.Booking_ID = ? FOR UPDATE";
 
             String bookingStatus;
+            Integer existingRideId;
             String origin;
             String destination;
             Timestamp departureDate;
-            int seatsRequested;
+            Integer seatsRequested;
 
             try (PreparedStatement ps = c.prepareStatement(bookingSelect)) {
                 ps.setInt(1, Integer.parseInt(bookingId));
@@ -612,25 +613,24 @@ public final class AppStore {
                         return false;
                     }
                     bookingStatus = rs.getString("Booking_Status");
+                    existingRideId = rs.getObject("Ride_ID", Integer.class);
                     origin = rs.getString("Origin");
                     destination = rs.getString("Destination");
                     departureDate = rs.getTimestamp("Departure_Date");
-                    seatsRequested = rs.getInt("Seats_Requested");
+                    seatsRequested = rs.getObject("Seats_Requested", Integer.class);
                 }
             }
 
-            if (!"pending".equalsIgnoreCase(bookingStatus)) {
+            // Only pending, unassigned requests can be acted on.
+            if (!"pending".equalsIgnoreCase(bookingStatus) || existingRideId != null) {
                 c.rollback();
                 return false;
             }
 
             if ("declined".equalsIgnoreCase(newStatus)) {
-                try (PreparedStatement ps = c.prepareStatement("UPDATE Bookings SET Status = 'declined' WHERE Booking_ID = ?")) {
-                    ps.setInt(1, Integer.parseInt(bookingId));
-                    boolean updated = ps.executeUpdate() > 0;
-                    c.commit();
-                    return updated;
-                }
+                // Do not mark declined; keep request available for other drivers.
+                c.commit();
+                return true;
             }
 
             // accepted: choose driver's first vehicle and create a Ride to fulfill this request.
@@ -656,7 +656,7 @@ public final class AppStore {
                 }
             }
 
-            if (seatsRequested <= 0 || totalSeats < seatsRequested) {
+            if (seatsRequested == null || seatsRequested <= 0 || totalSeats < seatsRequested) {
                 c.rollback();
                 return false;
             }
