@@ -111,6 +111,8 @@ public final class UserRepository {
                 }
             }
 
+            LogRepository.logUser("ACCOUNT_CREATED", userId, "New account: " + email);
+
             return new User(firstName, lastName, email, sjsuId, gender, passwordHash, roles);
 
         } catch (SQLException e) {
@@ -131,7 +133,7 @@ public final class UserRepository {
          * Returns null for missing/inactive accounts or when password verification fails.
          */
         String sql =
-                "SELECT u.First_Name, u.Last_Name, u.SJSU_ID, u.Gender, u.Password_Hash, " +
+                "SELECT u.User_ID, u.First_Name, u.Last_Name, u.SJSU_ID, u.Gender, u.Password_Hash, " +
                 "       CASE WHEN d.User_ID IS NOT NULL THEN 1 ELSE 0 END AS Is_Driver, " +
                 "       CASE WHEN p.User_ID IS NOT NULL THEN 1 ELSE 0 END AS Is_Passenger " +
                 "FROM Users u " +
@@ -155,11 +157,13 @@ public final class UserRepository {
                 String gender       = rs.getString("Gender");
                 boolean isDriver    = rs.getInt("Is_Driver") == 1;
                 boolean isPassenger = rs.getInt("Is_Passenger") == 1;
+                int userId = rs.getInt("User_ID");
+
 
                 Set<String> roles = new HashSet<>();
                 if (isDriver)    roles.add("driver");
                 if (isPassenger) roles.add("passenger");
-
+                LogRepository.logUser("LOGIN", userId, "User logged in: " + email);
                 return new User(firstName, lastName, email, sjsuId, gender, storedHash, roles);
             }
         } catch (SQLException e) {
@@ -179,6 +183,7 @@ public final class UserRepository {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, email);
             ps.executeUpdate();
+            LogRepository.log("ACCOUNT_DELETED", null, null, null, "Account deleted: " + email);
         } catch (SQLException e) {
             throw new RuntimeException("deleteUser failed", e);
         }
@@ -199,7 +204,9 @@ public final class UserRepository {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, PasswordUtil.hashPassword(newPassword));
             ps.setString(2, email);
-            return ps.executeUpdate() > 0;
+            boolean updated = ps.executeUpdate() > 0;
+            if (updated) LogRepository.log("PASSWORD_CHANGE", null, null, null, "Password changed for: " + email);
+            return updated;
         } catch (SQLException e) {
             throw new RuntimeException("updatePassword failed", e);
         }

@@ -110,6 +110,7 @@ public final class BookingRepository {
                 if (psRide.executeUpdate() == 0) { c.rollback(); return false; }
 
                 RideStatusStore.refreshRideStatuses(c);
+                LogRepository.log("BOOKING_CREATED", null, null, null, "Passenger " + passengerEmail + " booked ride " + rideId);
                 c.commit();
                 return true;
             } catch (SQLException e) {
@@ -376,6 +377,7 @@ public final class BookingRepository {
                 boolean cancelled = cancelStatement.executeUpdate() > 0;
 
                 RideStatusStore.refreshRideStatuses(c);
+                LogRepository.log("BOOKING_CANCELLED", null, null, Integer.parseInt(bookingId), "Passenger " + passengerEmail + " cancelled booking " + bookingId);
                 c.commit();
                 return cancelled;
             } catch (SQLException e) {

@@ -137,7 +137,7 @@ public final class RideRepository {
                 if (rideStatement.executeUpdate() == 0) {
                     throw new SQLException("No driver row found for ride assignment");
                 }
-
+                LogRepository.log("RIDE_CREATED", null, Integer.parseInt(vehicleId), null, "Ride created by " + driverEmail + " from " + origin + " to " + destination);
                 c.commit();
             } catch (SQLException e) {
                 c.rollback();
@@ -240,7 +240,7 @@ public final class RideRepository {
                         }
                     }
                 }
-
+                LogRepository.log("RIDE_CANCELLED", null, Integer.parseInt(rideId), null, "Ride " + rideId + " cancelled by " + driverEmail);
                 c.commit();
                 return true;
             } catch (SQLException e) {
