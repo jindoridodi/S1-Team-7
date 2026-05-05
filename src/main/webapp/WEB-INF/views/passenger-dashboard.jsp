@@ -82,38 +82,7 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
           </section>
         <% } %>
 
-        <section class="dashboard-section dashboard-passenger-section">
-          <div class="dashboard-section-heading">
-            <h3>My Saved Routes</h3>
-            <p>Save your frequent routes and we'll highlight matching rides for you.</p>
-          </div>
 
-          <% if (!savedRoutes.isEmpty()) { %>
-            <div class="ride-list" style="margin-bottom: 1rem;">
-              <% for (String[] route : savedRoutes) { %>
-                <div class="ride-item">
-                  <div class="ride-row">
-                    <div class="ride-info">
-                      <strong><%= route[1] %> &rarr; <%= route[2] %></strong>
-                    </div>
-                    <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
-                      <input type="hidden" name="action" value="deleteRoute" />
-                      <input type="hidden" name="routeId" value="<%= route[0] %>" />
-                      <button type="submit" class="request-decline">Remove</button>
-                    </form>
-                  </div>
-                </div>
-              <% } %>
-            </div>
-          <% } %>
-
-          <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-form-grid">
-            <input type="hidden" name="action" value="saveRoute" />
-            <input type="text" name="startLocation" placeholder="From (e.g. Fremont)" required />
-            <input type="text" name="endLocation" placeholder="To (e.g. SJSU)" required />
-            <button type="submit" class="login-submit">Save Route</button>
-          </form>
-        </section>
 
         <section class="dashboard-hero dashboard-section">
           <div class="dashboard-hero-copy">
@@ -127,6 +96,7 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
           <div class="dashboard-actions">
             <a class="login-submit action-find u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showCreateBookingForm">Find a Ride</a>
             <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showRideHistory">Ride History</a>
+            <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showSavedRoutes">My Saved Routes</a>
           </div>
         </section>
 

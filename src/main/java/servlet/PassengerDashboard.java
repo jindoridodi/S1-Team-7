@@ -57,6 +57,12 @@ public class PassengerDashboard extends HttpServlet {
             return;
         }
 
+        if ("showSavedRoutes".equals(action)) {
+            req.setAttribute("savedRoutes", SavedRouteRepository.getRoutesForUser(user.getEmail()));
+            req.getRequestDispatcher("/WEB-INF/views/passenger-saved-routes.jsp").forward(req, resp);
+            return;
+        }
+
         // Load available rides for display
         String originFilter = safe(req.getParameter("searchOrigin")).toLowerCase();
         String destinationFilter = safe(req.getParameter("searchDestination")).toLowerCase();
@@ -155,6 +161,8 @@ public class PassengerDashboard extends HttpServlet {
             if (!start.isBlank() && !end.isBlank()) {
                 SavedRouteRepository.saveRoute(user.getEmail(), start, end);
             }
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger?action=showSavedRoutes");
+            return;
         }
         
         if ("deleteRoute".equals(action)) {
@@ -162,6 +170,8 @@ public class PassengerDashboard extends HttpServlet {
             if (!routeId.isBlank()) {
                 SavedRouteRepository.deleteRoute(user.getEmail(), routeId);
             }
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger?action=showSavedRoutes");
+            return;
         }
 
         resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
