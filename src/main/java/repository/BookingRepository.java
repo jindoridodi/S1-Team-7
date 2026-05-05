@@ -212,7 +212,8 @@ public final class BookingRepository {
 
     public static boolean cancelUpcomingRideForPassenger(String passengerEmail, String bookingId) {
         String selectSql =
-                "SELECT b.Status AS Booking_Status, b.Ride_ID, r.Status AS Ride_Status, r.Departure_Date " +
+                "SELECT b.Status AS Booking_Status, b.Ride_ID, b.Seats_Requested, r.Status AS Ride_Status, " +
+                "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date " +
                 "FROM Bookings b " +
                 "JOIN Users pu ON pu.User_ID = b.User_ID " +
                 "LEFT JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
@@ -221,7 +222,7 @@ public final class BookingRepository {
                 "  AND pu.Account_Status = 'active' " +
                 "FOR UPDATE";
         String cancelSql = "UPDATE Bookings SET Status = 'cancelled' WHERE Booking_ID = ?";
-        String increaseSeatSql = "UPDATE Rides SET Seats_Left = Seats_Left + 1 WHERE Ride_ID = ?";
+        String increaseSeatSql = "UPDATE Rides SET Seats_Left = Seats_Left + ? WHERE Ride_ID = ?";
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
@@ -229,6 +230,7 @@ public final class BookingRepository {
 
             String bookingStatus;
             Integer rideId;
+            Integer seatsRequested;
             String rideStatus;
             Timestamp departureDate;
 
@@ -242,6 +244,7 @@ public final class BookingRepository {
                     }
                     bookingStatus = rs.getString("Booking_Status");
                     rideId = rs.getObject("Ride_ID", Integer.class);
+                    seatsRequested = rs.getObject("Seats_Requested", Integer.class);
                     rideStatus = rs.getString("Ride_Status");
                     departureDate = rs.getTimestamp("Departure_Date");
                 }
@@ -279,7 +282,9 @@ public final class BookingRepository {
                  PreparedStatement increaseSeatStatement = c.prepareStatement(increaseSeatSql)) {
 
                 if ("accepted".equalsIgnoreCase(bookingStatus)) {
-                    increaseSeatStatement.setInt(1, rideId);
+                    int delta = (seatsRequested == null || seatsRequested <= 0) ? 1 : seatsRequested;
+                    increaseSeatStatement.setInt(1, delta);
+                    increaseSeatStatement.setInt(2, rideId);
                     increaseSeatStatement.executeUpdate();
                 }
 
