@@ -14,6 +14,10 @@ public final class VehicleRepository {
     private VehicleRepository() {}
 
     public static List<Vehicle> getVehiclesForOwner(String ownerEmail) {
+        /*
+         * Fetches vehicles owned by the currently authenticated driver.
+         * Enforces ownership via Users↔Vehicles join and ignores inactive/deleted accounts or vehicles.
+         */
         String sql =
                 "SELECT v.Vehicle_ID, v.Make, v.Model, v.Color, v.License_Plate, v.Total_Seats, v.Insurance_Num " +
                 "FROM Vehicles v " +
@@ -48,6 +52,10 @@ public final class VehicleRepository {
 
     public static void addVehicle(String ownerEmail, String make, String model,
                                   String color, String plate, int totalSeats, String insuranceNum) {
+        /*
+         * Registers a vehicle for an existing active driver account.
+         * Uses a SELECT-based INSERT to enforce: user exists + has a Drivers row + account is active.
+         */
         String insertVehicle =
                 "INSERT INTO Vehicles (Driver_ID, License_Plate, Make, Model, Color, Total_Seats, Insurance_Num) " +
                 "SELECT u.User_ID, ?, ?, ?, ?, ?, ? FROM Users u " +
@@ -75,6 +83,10 @@ public final class VehicleRepository {
 
     public static void updateVehicle(String ownerEmail, String vehicleId, String make, String model,
                                      String color, String plate, int totalSeats, String insuranceNum) {
+        /*
+         * Updates vehicle details only if the vehicle is active and belongs to the given active user.
+         * Ownership is enforced via an EXISTS subquery on Users by email.
+         */
         String sql =
                 "UPDATE Vehicles v " +
                 "SET v.Make = ?, v.Model = ?, v.Color = ?, v.License_Plate = ?, v.Total_Seats = ?, v.Insurance_Num = ? " +
@@ -100,6 +112,10 @@ public final class VehicleRepository {
 
     /** Returns true if soft-deleted; false if not owned / already deleted. */
     public static boolean deleteVehicle(String ownerEmail, String vehicleId) {
+        /*
+         * Soft-deletes a vehicle (status -> deleted) but only for the owning active account.
+         * Prevents repeat deletes by requiring current Vehicle_Status = 'active'.
+         */
         String softDeleteSql =
                 "UPDATE Vehicles v " +
                 "JOIN Users u ON u.User_ID = v.Driver_ID " +

@@ -2,6 +2,12 @@ package repository;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 
+/**
+ * Password hashing and verification utilities.
+ *
+ * <p>This application stores only BCrypt hashes in the database (never plaintext). The cost factor is centralized
+ * here so it can be tuned without touching authentication flows.</p>
+ */
 public final class PasswordUtil {
     private PasswordUtil() {}
 
@@ -29,11 +35,25 @@ public final class PasswordUtil {
         return false;
     }
 
+    /**
+     * Hashes a password using BCrypt with the configured cost factor.
+     *
+     * @param password plaintext password (never stored)
+     * @return BCrypt hash string suitable for persistence
+     * @throws IllegalArgumentException if {@code password} is null
+     */
     public static String hashPassword(String password) {
         if (password == null) throw new IllegalArgumentException("password is required");
         return BCrypt.withDefaults().hashToString(BCRYPT_COST, password.toCharArray());
     }
 
+    /**
+     * Verifies a plaintext password against a stored BCrypt hash.
+     *
+     * @param password candidate plaintext password
+     * @param storedHash previously persisted BCrypt hash string
+     * @return true when the password matches the hash
+     */
     public static boolean verifyPassword(String password, String storedHash) {
         if (password == null || storedHash == null) return false;
         return BCrypt.verifyer().verify(password.toCharArray(), storedHash).verified;

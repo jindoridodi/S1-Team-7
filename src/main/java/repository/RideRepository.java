@@ -15,6 +15,10 @@ public final class RideRepository {
 
     public static List<Ride> getAvailableRides() {
         try (Connection c = DBConnection.get()) {
+            /*
+             * Lists bookable rides for the public browse/search view.
+             * Filters to future rides that are explicitly open and have remaining seats; enriches with driver + vehicle display info.
+             */
             String sql =
                     "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
                     "       CONCAT(u.First_Name, ' ', LEFT(u.Last_Name, 1), '.') AS Driver_Name, " +
@@ -54,6 +58,10 @@ public final class RideRepository {
     /** Returns all rides created by this driver, most recent first. */
     public static List<Ride> getRidesForDriver(String driverEmail) {
         try (Connection c = DBConnection.get()) {
+            /*
+             * Lists rides owned by the authenticated driver, guarded by active account status.
+             * Used by the driver dashboard; ordering shows newest departures first.
+             */
             String sql =
                     "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status " +
                     "FROM Rides r " +
@@ -87,6 +95,10 @@ public final class RideRepository {
     public static void createRide(String driverEmail, String vehicleId, String origin, String destination, String departureDate, int seatsLeft) {
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
+            /*
+             * Creates a ride offer for an active, verified driver using one of their active vehicles.
+             * INSERT ... SELECT enforces ownership (vehicle belongs to driver) and that the user has a Drivers row.
+             */
             String insertRide =
                     "INSERT INTO Rides (Driver_ID, Vehicle_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
                     "SELECT d.User_ID, v.Vehicle_ID, ?, ?, ?, ?, 'open' " +
@@ -123,23 +135,35 @@ public final class RideRepository {
      * Returns true on success, false if ride can't be cancelled.
      */
     public static boolean cancelRide(String driverEmail, String rideId) {
+        /*
+         * Cancels an owned ride and cascades user-visible effects:
+         * - marks active/pending bookings cancelled
+         * - marks the ride cancelled
+         * - inserts notifications for all affected passengers
+         *
+         * Uses row locking on the ride to prevent concurrent state changes.
+         */
         String verifySQL =
                 "SELECT r.Status, r.Origin, r.Destination " +
                 "FROM Rides r " +
                 "JOIN Users u ON u.User_ID = r.Driver_ID " +
                 "WHERE r.Ride_ID = ? AND u.Email = ? AND u.Account_Status = 'active' FOR UPDATE";
 
+        /* Collects passengers with bookings that will be impacted by a cancellation. */
         String getPassengersSQL =
                 "SELECT b.User_ID " +
                 "FROM Bookings b " +
                 "WHERE b.Ride_ID = ? AND b.Status IN ('pending', 'accepted')";
 
+        /* Cancels only bookings that are still actionable (pending/accepted). */
         String cancelBookingsSQL =
                 "UPDATE Bookings SET Status = 'cancelled' WHERE Ride_ID = ? AND Status IN ('pending', 'accepted')";
 
+        /* Cancels the ride row itself after ownership verification. */
         String cancelRideSQL =
                 "UPDATE Rides SET Status = 'cancelled' WHERE Ride_ID = ?";
 
+        /* Inserts a timestamped notification for each affected passenger. */
         String insertNotifSQL =
                 "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
 

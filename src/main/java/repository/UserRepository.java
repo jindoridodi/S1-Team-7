@@ -15,6 +15,7 @@ public final class UserRepository {
     private UserRepository() {}
 
     public static boolean hasUser(String email) {
+        /* Checks for an existing active account to prevent duplicate registrations. */
         String sql = "SELECT 1 FROM Users WHERE Email = ? AND Account_Status = 'active' LIMIT 1";
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -40,6 +41,7 @@ public final class UserRepository {
         if (hasUser(email)) return null;
         if (!PasswordUtil.isStrongPassword(password)) throw new IllegalArgumentException("password does not meet policy");
 
+        /* Creates the base user record as an active account (roles are inserted separately below). */
         String insertUser =
                 "INSERT INTO Users (SJSU_ID, First_Name, Last_Name, Email, Gender, " +
                 "                   Password_Hash, Account_Status) " +
@@ -66,6 +68,7 @@ public final class UserRepository {
 
             if (roles.contains("driver")) {
                 try (PreparedStatement pd = c.prepareStatement(
+                        /* Adds driver role details; verification is pending until admin approval. */
                         "INSERT INTO Drivers (User_ID, License_Number, Verification_Status, Driver_Rating) VALUES (?, ?, 'pending', 0.0)")) {
                     pd.setInt(1, userId);
                     pd.setString(2, licenseNumber);
@@ -74,6 +77,7 @@ public final class UserRepository {
             }
             if (roles.contains("passenger")) {
                 try (PreparedStatement pp = c.prepareStatement(
+                        /* Adds passenger role details with a fresh ride count. */
                         "INSERT INTO Passengers (User_ID, Total_Rides_Taken) VALUES (?, 0)")) {
                     pp.setInt(1, userId);
                     pp.executeUpdate();
@@ -88,6 +92,10 @@ public final class UserRepository {
     }
 
     public static User authenticate(String email, String password) {
+        /*
+         * Loads the active user profile for login and derives roles via LEFT JOINs.
+         * Returns null for missing/inactive accounts or when password verification fails.
+         */
         String sql =
                 "SELECT u.First_Name, u.Last_Name, u.SJSU_ID, u.Gender, u.Password_Hash, " +
                 "       CASE WHEN d.User_ID IS NOT NULL THEN 1 ELSE 0 END AS Is_Driver, " +
@@ -126,6 +134,7 @@ public final class UserRepository {
     }
 
     public static void deleteUser(String email) {
+        /* Soft-deletes the account so historical references remain valid. */
         String sql = "UPDATE Users SET Account_Status = 'deleted' WHERE Email = ?";
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -138,6 +147,7 @@ public final class UserRepository {
 
     public static boolean updatePassword(String email, String newPassword) {
         if (!PasswordUtil.isStrongPassword(newPassword)) return false;
+        /* Updates password only for active accounts to avoid reactivating soft-deleted users. */
         String sql = "UPDATE Users SET Password_Hash = ? WHERE Email = ? AND Account_Status = 'active'";
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -150,6 +160,7 @@ public final class UserRepository {
     }
 
     public static String getDriverVerificationStatus(String email) {
+        /* Reads the driver verification gate used to allow ride/vehicle management actions. */
         String sql =
                 "SELECT d.Verification_Status FROM Drivers d " +
                 "JOIN Users u ON u.User_ID = d.User_ID " +

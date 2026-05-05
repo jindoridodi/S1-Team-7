@@ -15,6 +15,10 @@ public final class NotificationRepository {
     /** Returns all notifications for a user, most recent first. */
     public static List<String[]> getNotificationsForUser(String email) {
         try (Connection c = DBConnection.get()) {
+            /*
+             * Fetches notifications for the authenticated user only.
+             * Guards by active account and orders newest-first for inbox display.
+             */
             String sql =
                     "SELECT n.Notification_ID, n.Content, n.Timestamp, n.Read_Status " +
                     "FROM Notifications n " +
@@ -46,6 +50,10 @@ public final class NotificationRepository {
 
     /** Marks a notification as read. */
     public static void markNotificationRead(String email, String notificationId) {
+        /*
+         * Marks a single notification read, but only if it belongs to the authenticated active account.
+         * This prevents users from toggling read-state for other users' notifications by ID.
+         */
         String sql =
                 "UPDATE Notifications n " +
                 "JOIN Users u ON u.User_ID = n.User_ID " +

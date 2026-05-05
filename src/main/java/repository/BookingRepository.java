@@ -19,15 +19,24 @@ public final class BookingRepository {
     public static boolean bookExistingRide(String passengerEmail, String rideId, int seatsRequested) {
         if (seatsRequested <= 0) return false;
 
+        /*
+         * Locks the selected ride row to prevent concurrent overbooking.
+         * Used with a transaction that inserts a booking and decrements Seats_Left atomically.
+         */
         String lockRideSql =
                 "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status " +
                 "FROM Rides r WHERE r.Ride_ID = ? FOR UPDATE";
 
+        /*
+         * Creates an accepted booking for the active passenger (by email) against a specific ride.
+         * Uses INSERT ... SELECT to enforce active account and avoid passing passenger User_ID from the client.
+         */
         String insertBookingSql =
                 "INSERT INTO Bookings (User_ID, Ride_ID, Origin, Destination, Departure_Date, Seats_Requested, Booking_Timestamp, Status) " +
                 "SELECT u.User_ID, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'accepted' " +
                 "FROM Users u WHERE u.Email = ? AND u.Account_Status = 'active' LIMIT 1";
 
+        /* Decrements available seats for the ride once booking is accepted. */
         String decrementSeatsSql = "UPDATE Rides SET Seats_Left = Seats_Left - ? WHERE Ride_ID = ?";
 
         try (Connection c = DBConnection.get()) {
@@ -97,6 +106,10 @@ public final class BookingRepository {
     }
 
     public static void createBooking(String passengerEmail, String origin, String destination, String departureDate, int seatsLeft) {
+        /*
+         * Creates a pending passenger request not yet assigned to a ride (Ride_ID is NULL).
+         * Passenger identity is resolved server-side from an active account email.
+         */
         String bookingInsertSql =
                 "INSERT INTO Bookings (User_ID, Ride_ID, Origin, Destination, Departure_Date, Seats_Requested, Booking_Timestamp, Status) " +
                 "VALUES ((SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active'), NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'pending')";
@@ -120,6 +133,10 @@ public final class BookingRepository {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
 
+            /*
+             * Lists upcoming bookings for the active passenger (pending/accepted only).
+             * Uses COALESCE to support both ride-linked bookings and unassigned booking requests.
+             */
             String sql =
                     "SELECT b.Booking_ID, b.Status AS Booking_Status, " +
                     "       COALESCE(r.Origin, b.Origin) AS Origin, " +
@@ -167,6 +184,13 @@ public final class BookingRepository {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
 
+            /*
+             * Lists non-upcoming bookings for the active passenger:
+             * - bookings explicitly cancelled/declined/completed
+             * - or bookings whose linked ride was cancelled/completed
+             *
+             * Orders most recent first for history view.
+             */
             String sql =
                     "SELECT b.Booking_ID, b.Status AS Booking_Status, " +
                     "       COALESCE(r.Origin, b.Origin) AS Origin, " +
@@ -211,6 +235,10 @@ public final class BookingRepository {
     }
 
     public static boolean cancelUpcomingRideForPassenger(String passengerEmail, String bookingId) {
+        /*
+         * Cancels a passenger booking/request and (when applicable) returns seats to the ride.
+         * Uses row locking to avoid races with driver actions and status refresh to keep ride state consistent.
+         */
         String selectSql =
                 "SELECT b.Status AS Booking_Status, b.Ride_ID, b.Seats_Requested, r.Status AS Ride_Status, " +
                 "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date " +
@@ -221,7 +249,9 @@ public final class BookingRepository {
                 "  AND pu.Email = ? " +
                 "  AND pu.Account_Status = 'active' " +
                 "FOR UPDATE";
+        /* Marks the booking cancelled (works for both ride-linked and unassigned requests). */
         String cancelSql = "UPDATE Bookings SET Status = 'cancelled' WHERE Booking_ID = ?";
+        /* Restores ride capacity when an accepted booking is cancelled. */
         String increaseSeatSql = "UPDATE Rides SET Seats_Left = Seats_Left + ? WHERE Ride_ID = ?";
 
         try (Connection c = DBConnection.get()) {
@@ -309,6 +339,10 @@ public final class BookingRepository {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
 
+            /*
+             * Lists unassigned passenger requests awaiting a driver's offer (Ride_ID is NULL, Status pending).
+             * Shown on the driver dashboard; ordered newest-first for triage.
+             */
             String sql =
                     "SELECT b.Booking_ID, b.Status AS Booking_Status, b.Booking_Timestamp, " +
                     "       CONCAT(pu.First_Name, ' ', LEFT(pu.Last_Name, 1), '.') AS Passenger_Name, " +
@@ -352,6 +386,7 @@ public final class BookingRepository {
             RideStatusStore.refreshRideStatuses(c);
 
             // Lock the booking request row.
+            /* Locks the booking request to prevent multiple drivers acting on it. */
             String bookingSelect =
                     "SELECT b.Status AS Booking_Status, b.Ride_ID, b.Origin, b.Destination, b.Departure_Date, b.Seats_Requested " +
                     "FROM Bookings b " +
@@ -389,6 +424,7 @@ public final class BookingRepository {
             // accepted: choose driver's first vehicle and create a Ride to fulfill this request.
             int driverId;
             try (PreparedStatement ps = c.prepareStatement(
+                    /* Resolves the acting driver from the authenticated email (active accounts only). */
                     "SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active' LIMIT 1")) {
                 ps.setString(1, driverEmail);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -400,6 +436,7 @@ public final class BookingRepository {
             int vehicleId;
             int totalSeats;
             try (PreparedStatement ps = c.prepareStatement(
+                    /* Picks the driver's first active vehicle to fulfill the request (simple default selection). */
                     "SELECT Vehicle_ID, Total_Seats FROM Vehicles WHERE Driver_ID = ? AND Vehicle_Status = 'active' ORDER BY Vehicle_ID ASC LIMIT 1")) {
                 ps.setInt(1, driverId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -419,6 +456,10 @@ public final class BookingRepository {
 
             int rideId;
             try (PreparedStatement ps = c.prepareStatement(
+                    /*
+                     * Creates a ride offering that satisfies the request and leaves remaining capacity (Seats_Left).
+                     * The resulting ride status is derived from remaining seats (open/full).
+                     */
                     "INSERT INTO Rides (Driver_ID, Vehicle_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
                 ps.setInt(1, driverId);
@@ -436,6 +477,7 @@ public final class BookingRepository {
             }
 
             try (PreparedStatement ps = c.prepareStatement(
+                    /* Links the booking to the newly created ride and marks it accepted in one update. */
                     "UPDATE Bookings SET Ride_ID = ?, Status = 'accepted' WHERE Booking_ID = ?")) {
                 ps.setInt(1, rideId);
                 ps.setInt(2, Integer.parseInt(bookingId));
