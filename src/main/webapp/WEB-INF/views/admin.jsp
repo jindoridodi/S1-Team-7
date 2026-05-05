@@ -33,22 +33,24 @@ if (pendingDrivers == null) pendingDrivers = java.util.Collections.emptyList();
     <div class="dashboard-main-inner">
 
       <% if (!isAdmin) { %>
-        <%-- Admin login form --%>
-        <div class="login-shell" style="max-width:400px; margin: 4rem auto;">
-          <h2 style="margin-bottom:1.5rem;">Admin Login</h2>
-          <% if (request.getAttribute("loginError") != null) { %>
-            <p class="field-error"><%= request.getAttribute("loginError") %></p>
-          <% } %>
-          <form method="post" action="<%= cp %>/admin">
-            <input type="hidden" name="action" value="adminLogin" />
-            <label>Admin Password</label>
-            <input type="password" name="adminPassword" placeholder="Enter admin password" style="width:100%; margin-bottom:1rem;" />
-            <button type="submit" class="login-submit" style="width:100%;">Login</button>
-          </form>
+        <div style="display:flex; justify-content:center; align-items:center; min-height:80vh; width:100%;">
+          <div class="login-shell auth-shell">
+            <header class="login-header">
+              <h2>Admin Login</h2>
+            </header>
+            <form class="login-form" method="post" action="<%= cp %>/admin">
+              <input type="hidden" name="action" value="adminLogin" />
+              <% if (request.getAttribute("loginError") != null) { %>
+                <p class="field-error"><%= request.getAttribute("loginError") %></p>
+              <% } %>
+              <label for="adminPassword">Admin Password</label>
+              <input id="adminPassword" type="password" name="adminPassword" placeholder="Enter admin password" />
+              <button type="submit" class="login-submit">Login</button>
+            </form>
+          </div>
         </div>
 
       <% } else { %>
-        <%-- Admin dashboard --%>
         <section class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
             <h3>Pending Driver Verifications</h3>
