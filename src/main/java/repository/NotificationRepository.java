@@ -45,11 +45,16 @@ public final class NotificationRepository {
     }
 
     /** Marks a notification as read. */
-    public static void markNotificationRead(String notificationId) {
-        String sql = "UPDATE Notifications SET Read_Status = 'read' WHERE Notification_ID = ?";
+    public static void markNotificationRead(String email, String notificationId) {
+        String sql =
+                "UPDATE Notifications n " +
+                "JOIN Users u ON u.User_ID = n.User_ID " +
+                "SET n.Read_Status = 'read' " +
+                "WHERE n.Notification_ID = ? AND u.Email = ? AND u.Account_Status = 'active'";
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, Integer.parseInt(notificationId));
+            ps.setString(2, email);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("markNotificationRead failed", e);

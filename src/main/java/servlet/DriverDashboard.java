@@ -178,8 +178,6 @@ public class DriverDashboard extends HttpServlet {
                 String nextStatus = "";
                 if ("accept".equalsIgnoreCase(decision)) {
                     nextStatus = "accepted";
-                } else if ("decline".equalsIgnoreCase(decision)) {
-                    nextStatus = "declined";
                 }
 
                 if (!nextStatus.isBlank()) {

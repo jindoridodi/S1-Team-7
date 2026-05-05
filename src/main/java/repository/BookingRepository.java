@@ -16,6 +16,86 @@ import java.util.List;
 public final class BookingRepository {
     private BookingRepository() {}
 
+    public static boolean bookExistingRide(String passengerEmail, String rideId, int seatsRequested) {
+        if (seatsRequested <= 0) return false;
+
+        String lockRideSql =
+                "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status " +
+                "FROM Rides r WHERE r.Ride_ID = ? FOR UPDATE";
+
+        String insertBookingSql =
+                "INSERT INTO Bookings (User_ID, Ride_ID, Origin, Destination, Departure_Date, Seats_Requested, Booking_Timestamp, Status) " +
+                "SELECT u.User_ID, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'accepted' " +
+                "FROM Users u WHERE u.Email = ? AND u.Account_Status = 'active' LIMIT 1";
+
+        String decrementSeatsSql = "UPDATE Rides SET Seats_Left = Seats_Left - ? WHERE Ride_ID = ?";
+
+        try (Connection c = DBConnection.get()) {
+            c.setAutoCommit(false);
+            RideStatusStore.refreshRideStatuses(c);
+
+            int ridePk;
+            String origin;
+            String destination;
+            Timestamp departureDate;
+            int seatsLeft;
+            String rideStatus;
+
+            try (PreparedStatement ps = c.prepareStatement(lockRideSql)) {
+                ps.setInt(1, Integer.parseInt(rideId));
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) { c.rollback(); return false; }
+                    ridePk = rs.getInt("Ride_ID");
+                    origin = rs.getString("Origin");
+                    destination = rs.getString("Destination");
+                    departureDate = rs.getTimestamp("Departure_Date");
+                    seatsLeft = rs.getInt("Seats_Left");
+                    rideStatus = rs.getString("Status");
+                }
+            }
+
+            if (departureDate == null || !departureDate.after(new Timestamp(System.currentTimeMillis()))) {
+                c.rollback();
+                return false;
+            }
+            if (!"open".equalsIgnoreCase(rideStatus)) {
+                c.rollback();
+                return false;
+            }
+            if (seatsLeft < seatsRequested) {
+                c.rollback();
+                return false;
+            }
+
+            try (PreparedStatement psBooking = c.prepareStatement(insertBookingSql);
+                 PreparedStatement psRide = c.prepareStatement(decrementSeatsSql)) {
+                psBooking.setInt(1, ridePk);
+                psBooking.setString(2, origin);
+                psBooking.setString(3, destination);
+                psBooking.setTimestamp(4, departureDate);
+                psBooking.setInt(5, seatsRequested);
+                psBooking.setString(6, passengerEmail);
+
+                if (psBooking.executeUpdate() == 0) { c.rollback(); return false; }
+
+                psRide.setInt(1, seatsRequested);
+                psRide.setInt(2, ridePk);
+                if (psRide.executeUpdate() == 0) { c.rollback(); return false; }
+
+                RideStatusStore.refreshRideStatuses(c);
+                c.commit();
+                return true;
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("bookExistingRide failed", e);
+        }
+    }
+
     public static void createBooking(String passengerEmail, String origin, String destination, String departureDate, int seatsLeft) {
         String bookingInsertSql =
                 "INSERT INTO Bookings (User_ID, Ride_ID, Origin, Destination, Departure_Date, Seats_Requested, Booking_Timestamp, Status) " +
@@ -132,10 +212,10 @@ public final class BookingRepository {
 
     public static boolean cancelUpcomingRideForPassenger(String passengerEmail, String bookingId) {
         String selectSql =
-                "SELECT b.Status AS Booking_Status, r.Ride_ID, r.Status AS Ride_Status, r.Departure_Date " +
+                "SELECT b.Status AS Booking_Status, b.Ride_ID, r.Status AS Ride_Status, r.Departure_Date " +
                 "FROM Bookings b " +
                 "JOIN Users pu ON pu.User_ID = b.User_ID " +
-                "JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+                "LEFT JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
                 "WHERE b.Booking_ID = ? " +
                 "  AND pu.Email = ? " +
                 "  AND pu.Account_Status = 'active' " +
@@ -148,7 +228,7 @@ public final class BookingRepository {
             RideStatusStore.refreshRideStatuses(c);
 
             String bookingStatus;
-            int rideId;
+            Integer rideId;
             String rideStatus;
             Timestamp departureDate;
 
@@ -161,9 +241,30 @@ public final class BookingRepository {
                         return false;
                     }
                     bookingStatus = rs.getString("Booking_Status");
-                    rideId = rs.getInt("Ride_ID");
+                    rideId = rs.getObject("Ride_ID", Integer.class);
                     rideStatus = rs.getString("Ride_Status");
                     departureDate = rs.getTimestamp("Departure_Date");
+                }
+            }
+
+            // Pending requests without an assigned ride can be cancelled any time before their requested departure.
+            if (rideId == null) {
+                boolean hasDeparted = departureDate == null || !departureDate.after(new Timestamp(System.currentTimeMillis()));
+                if (hasDeparted || !"pending".equalsIgnoreCase(bookingStatus)) {
+                    c.rollback();
+                    return false;
+                }
+
+                try (PreparedStatement cancelStatement = c.prepareStatement(cancelSql)) {
+                    cancelStatement.setInt(1, Integer.parseInt(bookingId));
+                    boolean cancelled = cancelStatement.executeUpdate() > 0;
+                    c.commit();
+                    return cancelled;
+                } catch (SQLException e) {
+                    c.rollback();
+                    throw e;
+                } finally {
+                    c.setAutoCommit(true);
                 }
             }
 
@@ -237,7 +338,7 @@ public final class BookingRepository {
     }
 
     public static boolean updatePassengerRequestStatus(String driverEmail, String bookingId, String newStatus) {
-        if (!"accepted".equalsIgnoreCase(newStatus) && !"declined".equalsIgnoreCase(newStatus)) {
+        if (!"accepted".equalsIgnoreCase(newStatus)) {
             return false;
         }
 
@@ -278,12 +379,6 @@ public final class BookingRepository {
             if (!"pending".equalsIgnoreCase(bookingStatus) || existingRideId != null) {
                 c.rollback();
                 return false;
-            }
-
-            if ("declined".equalsIgnoreCase(newStatus)) {
-                // Do not mark declined; keep request available for other drivers.
-                c.commit();
-                return true;
             }
 
             // accepted: choose driver's first vehicle and create a Ride to fulfill this request.

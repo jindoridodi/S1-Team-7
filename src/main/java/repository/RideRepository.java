@@ -145,64 +145,68 @@ public final class RideRepository {
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
-
-            // Verify ride belongs to driver and is cancellable.
-            String rideStatus, origin, destination;
-            try (PreparedStatement ps = c.prepareStatement(verifySQL)) {
-                ps.setInt(1, Integer.parseInt(rideId));
-                ps.setString(2, driverEmail);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return false; }
-                    rideStatus  = rs.getString("Status");
-                    origin      = rs.getString("Origin");
-                    destination = rs.getString("Destination");
-                }
-            }
-
-            if ("cancelled".equalsIgnoreCase(rideStatus) || "completed".equalsIgnoreCase(rideStatus)) {
-                c.rollback();
-                return false;
-            }
-
-            // Collect affected passenger IDs before cancelling.
-            List<Integer> passengerIds = new ArrayList<>();
-            try (PreparedStatement ps = c.prepareStatement(getPassengersSQL)) {
-                ps.setInt(1, Integer.parseInt(rideId));
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) passengerIds.add(rs.getInt("User_ID"));
-                }
-            }
-
-            // Cancel all active bookings.
-            try (PreparedStatement ps = c.prepareStatement(cancelBookingsSQL)) {
-                ps.setInt(1, Integer.parseInt(rideId));
-                ps.executeUpdate();
-            }
-
-            // Cancel the ride.
-            try (PreparedStatement ps = c.prepareStatement(cancelRideSQL)) {
-                ps.setInt(1, Integer.parseInt(rideId));
-                ps.executeUpdate();
-            }
-
-            // Notify each affected passenger.
-            if (!passengerIds.isEmpty()) {
-                String message = "Your ride from " + origin + " to " + destination + " has been cancelled by the driver.";
-                try (PreparedStatement psNotif = c.prepareStatement(insertNotifSQL)) {
-                    for (int userId : passengerIds) {
-                        psNotif.setInt(1, userId);
-                        psNotif.setString(2, message);
-                        psNotif.executeUpdate();
+            try {
+                // Verify ride belongs to driver and is cancellable.
+                String rideStatus, origin, destination;
+                try (PreparedStatement ps = c.prepareStatement(verifySQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.setString(2, driverEmail);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) { c.rollback(); return false; }
+                        rideStatus  = rs.getString("Status");
+                        origin      = rs.getString("Origin");
+                        destination = rs.getString("Destination");
                     }
                 }
+
+                if ("cancelled".equalsIgnoreCase(rideStatus) || "completed".equalsIgnoreCase(rideStatus)) {
+                    c.rollback();
+                    return false;
+                }
+
+                // Collect affected passenger IDs before cancelling.
+                List<Integer> passengerIds = new ArrayList<>();
+                try (PreparedStatement ps = c.prepareStatement(getPassengersSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) passengerIds.add(rs.getInt("User_ID"));
+                    }
+                }
+
+                // Cancel all active bookings.
+                try (PreparedStatement ps = c.prepareStatement(cancelBookingsSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.executeUpdate();
+                }
+
+                // Cancel the ride.
+                try (PreparedStatement ps = c.prepareStatement(cancelRideSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.executeUpdate();
+                }
+
+                // Notify each affected passenger.
+                if (!passengerIds.isEmpty()) {
+                    String message = "Your ride from " + origin + " to " + destination + " has been cancelled by the driver.";
+                    try (PreparedStatement psNotif = c.prepareStatement(insertNotifSQL)) {
+                        for (int userId : passengerIds) {
+                            psNotif.setInt(1, userId);
+                            psNotif.setString(2, message);
+                            psNotif.executeUpdate();
+                        }
+                    }
+                }
+
+                c.commit();
+                return true;
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(true);
             }
-
-            c.commit();
-            return true;
-
         } catch (SQLException e) {
-            try { throw new RuntimeException("cancelRide failed", e); }
-            finally { }
+            throw new RuntimeException("cancelRide failed", e);
         }
     }
 }

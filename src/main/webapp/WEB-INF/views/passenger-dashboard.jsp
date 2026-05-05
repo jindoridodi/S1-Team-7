@@ -211,7 +211,23 @@ if (upcomingRides == null) {
                     <% } %>
                     </div>
                     <div class="ride-actions">
-                      <span class="ride-meta">Use “Find a Ride” to request.</span>
+                      <% if (ride.getSeatsLeft() > 0 && "open".equalsIgnoreCase(ride.getStatus())) { %>
+                        <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
+                          <input type="hidden" name="action" value="bookExistingRide" />
+                          <input type="hidden" name="rideId" value="<%= ride.getId() %>" />
+                          <input type="number"
+                                 name="seatsRequested"
+                                 class="login-input"
+                                 min="1"
+                                 max="<%= ride.getSeatsLeft() %>"
+                                 value="1"
+                                 style="max-width: 110px;"
+                                 required />
+                          <button type="submit" class="request-approve">Book</button>
+                        </form>
+                      <% } else { %>
+                        <span class="ride-meta">Not available.</span>
+                      <% } %>
                     </div>
                   </div>
                 </div>

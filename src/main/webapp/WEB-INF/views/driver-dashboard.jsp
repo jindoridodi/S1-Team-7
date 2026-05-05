@@ -206,12 +206,6 @@ if (passengerRequests == null) {
                             <input type="hidden" name="decision" value="accept" />
                             <button type="submit" class="request-approve">Accept Request</button>
                           </form>
-                          <form method="post" action="<%= cp %>/dashboard/driver" class="dashboard-inline-form">
-                            <input type="hidden" name="action" value="processPassengerRequest" />
-                            <input type="hidden" name="bookingId" value="<%= requestRow.getBookingId() %>" />
-                            <input type="hidden" name="decision" value="decline" />
-                            <button type="submit" class="request-decline">Decline</button>
-                          </form>
                         </div>
                       <% } %>
                     </div>

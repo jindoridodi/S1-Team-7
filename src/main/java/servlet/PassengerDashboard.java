@@ -121,6 +121,18 @@ public class PassengerDashboard extends HttpServlet {
             }
         }
 
+        if ("bookExistingRide".equals(action)) {
+            String rideId = safe(req.getParameter("rideId"));
+            String seatsRequested = safe(req.getParameter("seatsRequested"));
+            if (!rideId.isBlank() && !seatsRequested.isBlank()) {
+                try {
+                    int seats = Integer.parseInt(seatsRequested);
+                    BookingRepository.bookExistingRide(user.getEmail(), rideId, seats);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+
         if ("cancelUpcomingRide".equals(action)) {
             String bookingId = safe(req.getParameter("bookingId"));
             if (!bookingId.isBlank()) {
@@ -131,7 +143,7 @@ public class PassengerDashboard extends HttpServlet {
         if ("markNotifRead".equals(action)) {
             String notifId = safe(req.getParameter("notifId"));
             if (!notifId.isBlank()) {
-                NotificationRepository.markNotificationRead(notifId);
+                NotificationRepository.markNotificationRead(user.getEmail(), notifId);
             }
         }
 
