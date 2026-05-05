@@ -400,7 +400,7 @@ public final class BookingRepository {
             int vehicleId;
             int totalSeats;
             try (PreparedStatement ps = c.prepareStatement(
-                    "SELECT Vehicle_ID, Total_Seats FROM Vehicles WHERE Driver_ID = ? ORDER BY Vehicle_ID ASC LIMIT 1")) {
+                    "SELECT Vehicle_ID, Total_Seats FROM Vehicles WHERE Driver_ID = ? AND Vehicle_Status = 'active' ORDER BY Vehicle_ID ASC LIMIT 1")) {
                 ps.setInt(1, driverId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) { c.rollback(); return false; }

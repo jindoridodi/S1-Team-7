@@ -18,7 +18,7 @@ public final class VehicleRepository {
                 "SELECT v.Vehicle_ID, v.Make, v.Model, v.Color, v.License_Plate, v.Total_Seats, v.Insurance_Num " +
                 "FROM Vehicles v " +
                 "JOIN Users u ON u.User_ID = v.Driver_ID " +
-                "WHERE u.Email = ? AND u.Account_Status = 'active'";
+                "WHERE u.Email = ? AND u.Account_Status = 'active' AND v.Vehicle_Status = 'active'";
 
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -79,6 +79,7 @@ public final class VehicleRepository {
                 "UPDATE Vehicles v " +
                 "SET v.Make = ?, v.Model = ?, v.Color = ?, v.License_Plate = ?, v.Total_Seats = ?, v.Insurance_Num = ? " +
                 "WHERE v.Vehicle_ID = ? " +
+                "AND v.Vehicle_Status = 'active' " +
                 "AND EXISTS (SELECT 1 FROM Users u WHERE u.User_ID = v.Driver_ID AND u.Email = ? AND u.Account_Status = 'active')";
 
         try (Connection c = DBConnection.get();
@@ -97,17 +98,20 @@ public final class VehicleRepository {
         }
     }
 
-    public static void deleteVehicle(String ownerEmail, String vehicleId) {
-        String sql =
-                "DELETE v FROM Vehicles v " +
+    /** Returns true if soft-deleted; false if not owned / already deleted. */
+    public static boolean deleteVehicle(String ownerEmail, String vehicleId) {
+        String softDeleteSql =
+                "UPDATE Vehicles v " +
                 "JOIN Users u ON u.User_ID = v.Driver_ID " +
-                "WHERE u.Email = ? AND u.Account_Status = 'active' AND v.Vehicle_ID = ?";
+                "SET v.Vehicle_Status = 'deleted' " +
+                "WHERE u.Email = ? AND u.Account_Status = 'active' AND v.Vehicle_ID = ? AND v.Vehicle_Status = 'active'";
 
-        try (Connection c = DBConnection.get();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, ownerEmail);
-            ps.setInt(2, Integer.parseInt(vehicleId));
-            ps.executeUpdate();
+        try (Connection c = DBConnection.get()) {
+            try (PreparedStatement ps = c.prepareStatement(softDeleteSql)) {
+                ps.setString(1, ownerEmail);
+                ps.setInt(2, Integer.parseInt(vehicleId));
+                return ps.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             throw new RuntimeException("deleteVehicle failed", e);
         }

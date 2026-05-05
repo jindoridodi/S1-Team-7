@@ -220,6 +220,7 @@ CREATE TABLE `Vehicles` (
   `Color` varchar(20) DEFAULT NULL,
   `Total_Seats` int DEFAULT NULL,
   `Insurance_Num` varchar(50) DEFAULT NULL,
+  `Vehicle_Status` varchar(20) NOT NULL DEFAULT 'active',
   PRIMARY KEY (`Vehicle_ID`),
   KEY `fk_vehicles_driver` (`Driver_ID`),
   CONSTRAINT `fk_vehicles_driver` FOREIGN KEY (`Driver_ID`) REFERENCES `Drivers` (`User_ID`)

@@ -65,6 +65,10 @@ public class DriverDashboard extends HttpServlet {
         }
 
         if ("showVehicles".equals(action)) {
+            if ("vehicleInUse".equals(error)) {
+                req.setAttribute("error",
+                        "Cannot delete this vehicle because it is assigned to an existing ride. Cancel/delete the ride first.");
+            }
             req.setAttribute("vehicles", VehicleRepository.getVehiclesForOwner(user.getEmail()));
             req.getRequestDispatcher("/WEB-INF/views/driver-vehicles.jsp").forward(req, resp);
             return;
@@ -145,7 +149,8 @@ public class DriverDashboard extends HttpServlet {
         if ("deleteVehicle".equals(action)) {
             String vehicleId = safe(req.getParameter("vehicleId"));
             if (!vehicleId.isBlank()) {
-                VehicleRepository.deleteVehicle(user.getEmail(), vehicleId);
+                boolean deleted = VehicleRepository.deleteVehicle(user.getEmail(), vehicleId);
+                if (!deleted) { /* ignore */ }
             }
         }
 

@@ -92,7 +92,7 @@ public final class RideRepository {
                     "SELECT d.User_ID, v.Vehicle_ID, ?, ?, ?, ?, 'open' " +
                     "FROM Users u " +
                     "JOIN Drivers d ON d.User_ID = u.User_ID " +
-                    "JOIN Vehicles v ON v.Vehicle_ID = ? AND v.Driver_ID = d.User_ID " +
+                    "JOIN Vehicles v ON v.Vehicle_ID = ? AND v.Driver_ID = d.User_ID AND v.Vehicle_Status = 'active' " +
                     "WHERE u.Email = ? AND u.Account_Status = 'active'";
 
             try (PreparedStatement rideStatement = c.prepareStatement(insertRide)) {
