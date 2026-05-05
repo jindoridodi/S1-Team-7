@@ -85,7 +85,7 @@ if (upcomingRides == null) {
 
           <div class="dashboard-actions">
             <a class="login-submit action-find u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showCreateBookingForm">Find a Ride</a>
-            <button class="login-submit action-bookings" type="button">My Bookings</button>
+            <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showRideHistory">Ride History</a>
           </div>
         </section>
 
@@ -143,46 +143,7 @@ if (upcomingRides == null) {
           <% } %>
           </section>
 
-<!-- ✅ Ride History Section -->
-<section class="dashboard-section dashboard-passenger-section">
-  <div class="dashboard-section-heading">
-    <h3>Ride History</h3>
-    <p>Your past rides (completed or cancelled).</p>
-  </div>
-
-  <%
-    java.util.List<model.UpcomingRide> pastRides = new java.util.ArrayList<>();
-
-    for (model.UpcomingRide r : upcomingRides) {
-      if ("completed".equalsIgnoreCase(r.getBookingStatus()) ||
-          "cancelled".equalsIgnoreCase(r.getBookingStatus())) {
-        pastRides.add(r);
-      }
-    }
-  %>
-
-  <% if (pastRides.isEmpty()) { %>
-    <div class="dashboard-empty">
-      <p>No past rides yet.</p>
-    </div>
-  <% } else { %>
-    <div class="ride-list">
-      <% for (model.UpcomingRide ride : pastRides) { %>
-        <div class="ride-item">
-          <div class="ride-row">
-            <div class="ride-info">
-              <strong><%= ride.getOrigin() %> → <%= ride.getDestination() %></strong><br />
-              <small class="ride-meta">Status: <%= ride.getBookingStatus() %></small>
-              <small class="ride-meta">Driver: <%= ride.getDriverName() %></small>
-              <small class="ride-meta">Vehicle: <%= ride.getVehicleInfo() %></small>
-            </div>
-          </div>
-        </div>
-      <% } %>
-    </div>
-  <% } %>
-</section>
-
+        <section class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
             <h3>Available Rides</h3>
             <p>Search results will appear here once rides are available for your route.</p>
@@ -193,7 +154,7 @@ if (upcomingRides == null) {
             <input id="rides-filter-date" type="date" class="dashboard-search dashboard-search--date" />
           </div>
 
-          <div id="rides-list" class="ride-list">
+          <div id="rides-list" class="ride-list ride-list--spaced">
             <%
               java.util.List<model.Ride> availableRides = (java.util.List<model.Ride>) request.getAttribute("availableRides");
               if (availableRides == null) {
@@ -202,11 +163,11 @@ if (upcomingRides == null) {
             %>
 
             <% if (availableRides.isEmpty()) { %>
-              <div id="no-rides" class="dashboard-empty">
+              <div id="no-rides" class="dashboard-empty dashboard-empty--spaced">
                 <p>No active rides found for your search.</p>
               </div>
             <% } else { %>
-              <div id="no-rides" class="dashboard-empty is-hidden">
+              <div id="no-rides" class="dashboard-empty dashboard-empty--spaced is-hidden">
                 <p>No active rides found for your search.</p>
               </div>
               <% for (model.Ride ride : availableRides) { %>
@@ -250,17 +211,7 @@ if (upcomingRides == null) {
                     <% } %>
                     </div>
                     <div class="ride-actions">
-                      <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
-                        <input type="hidden" name="action" value="processRideRequest" />
-                        <input type="hidden" name="rideId" value="<%= ride.getId() %>" />
-                        <% if ("completed".equalsIgnoreCase(ride.getStatus()) ||
-                          "cancelled".equalsIgnoreCase(ride.getStatus()) ||
-                          ride.getSeatsLeft() == 0) { %>
-                      <span class="ride-meta">Unavailable</span>
-                    <% } else { %>
-                      <button type="submit" class="request-approve">Request</button>
-                    <% } %>
-                      </form>
+                      <span class="ride-meta">Use “Find a Ride” to request.</span>
                     </div>
                   </div>
                 </div>

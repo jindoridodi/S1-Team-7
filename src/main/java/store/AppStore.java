@@ -46,12 +46,9 @@ public final class AppStore {
         return BCrypt.withDefaults().hashToString(BCRYPT_COST, password.toCharArray());
     }
 
-    private static boolean verifyPassword(String password, String storedHashOrPlaintext) {
-        if (password == null || storedHashOrPlaintext == null) return false;
-        BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), storedHashOrPlaintext);
-        if (result.verified) return true;
-        // Backward compatibility for accounts created before hashing existed.
-        return storedHashOrPlaintext.equals(password);
+    private static boolean verifyPassword(String password, String storedHash) {
+        if (password == null || storedHash == null) return false;
+        return BCrypt.verifyer().verify(password.toCharArray(), storedHash).verified;
     }
 
     private static void refreshRideStatuses(Connection c) throws SQLException {
@@ -165,18 +162,6 @@ public final class AppStore {
 
                 String storedHash = rs.getString("Password_Hash");
                 if (!verifyPassword(password, storedHash)) return null;
-
-                // If this account was stored as plaintext historically, upgrade it now.
-                if (storedHash != null && storedHash.equals(password)) {
-                    try (PreparedStatement upgrade = c.prepareStatement(
-                            "UPDATE Users SET Password_Hash = ? WHERE Email = ? AND Account_Status = 'active'")) {
-                        String upgradedHash = hashPassword(password);
-                        upgrade.setString(1, upgradedHash);
-                        upgrade.setString(2, email);
-                        upgrade.executeUpdate();
-                        storedHash = upgradedHash;
-                    }
-                }
 
                 String firstName    = rs.getString("First_Name");
                 String lastName     = rs.getString("Last_Name");
@@ -360,87 +345,6 @@ public final class AppStore {
         }
     }
 
-    public static void createBookingForRide(String passengerEmail, int rideId) {
-        requestSeatOnRide(passengerEmail, rideId);
-    }
-
-    public static void requestSeatOnRide(String passengerEmail, int rideId) {
-        createBookingForRideInternal(passengerEmail, rideId, "pending");
-    }
-
-    public static void directBookSeatOnRide(String passengerEmail, int rideId) {
-        createBookingForRideInternal(passengerEmail, rideId, "accepted");
-    }
-
-    private static void createBookingForRideInternal(String passengerEmail, int rideId, String bookingStatus) {
-        String insertBooking =
-            "INSERT INTO Bookings (User_ID, Ride_ID, Booking_Timestamp, Status) " +
-            "VALUES ((SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active'), ?, CURRENT_TIMESTAMP, ?)";
-        String rideCheckSql =
-            "SELECT Ride_ID, Seats_Left, Status, Departure_Date FROM Rides WHERE Ride_ID = ? FOR UPDATE";
-        String decreaseRideSeat =
-            "UPDATE Rides SET Seats_Left = Seats_Left - 1 WHERE Ride_ID = ? AND Seats_Left > 0";
-        String setFullIfNeeded =
-            "UPDATE Rides SET Status = 'full' WHERE Ride_ID = ? AND Seats_Left <= 0 AND Departure_Date > NOW()";
-
-        try (Connection c = DBConnection.get()) {
-            c.setAutoCommit(false);
-
-            refreshRideStatuses(c);
-
-            int seatsLeft;
-            String rideStatus;
-            Timestamp departureDate;
-
-            try (PreparedStatement rideCheckStatement = c.prepareStatement(rideCheckSql)) {
-                rideCheckStatement.setInt(1, rideId);
-                try (ResultSet rideRows = rideCheckStatement.executeQuery()) {
-                    if (!rideRows.next()) {
-                        throw new SQLException("Ride not found");
-                    }
-                    seatsLeft = rideRows.getInt("Seats_Left");
-                    rideStatus = rideRows.getString("Status");
-                    departureDate = rideRows.getTimestamp("Departure_Date");
-                }
-            }
-
-            boolean hasDeparted = departureDate == null || !departureDate.after(new Timestamp(System.currentTimeMillis()));
-            if (hasDeparted || !"open".equalsIgnoreCase(rideStatus) || seatsLeft <= 0) {
-                throw new SQLException("Ride is not available for booking");
-            }
-
-            try (PreparedStatement bookingStatement = c.prepareStatement(insertBooking);
-                 PreparedStatement decreaseSeatStatement = c.prepareStatement(decreaseRideSeat);
-                 PreparedStatement setFullStatement = c.prepareStatement(setFullIfNeeded)) {
-
-                bookingStatement.setString(1, passengerEmail);
-                bookingStatement.setInt(2, rideId);
-                bookingStatement.setString(3, bookingStatus);
-                if (bookingStatement.executeUpdate() == 0) {
-                    throw new SQLException("No passenger row found for booking");
-                }
-
-                if ("accepted".equalsIgnoreCase(bookingStatus)) {
-                    decreaseSeatStatement.setInt(1, rideId);
-                    if (decreaseSeatStatement.executeUpdate() == 0) {
-                        throw new SQLException("Ride is full");
-                    }
-                    setFullStatement.setInt(1, rideId);
-                    setFullStatement.executeUpdate();
-                }
-
-                c.commit();
-            } catch (SQLException e) {
-                c.rollback();
-                throw e;
-            } finally {
-                c.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("createBookingForRide failed", e);
-        }
-    }
-
     public static java.util.List<Ride> getAvailableRides() {
         try (Connection c = DBConnection.get()) {
             String sql =
@@ -523,6 +427,53 @@ public final class AppStore {
             }
         } catch (SQLException e) {
             throw new RuntimeException("getUpcomingRidesForPassenger failed", e);
+        }
+    }
+
+    public static java.util.List<UpcomingRide> getRideHistoryForPassenger(String passengerEmail) {
+        try (Connection c = DBConnection.get()) {
+            refreshRideStatuses(c);
+
+            String sql =
+                "SELECT b.Booking_ID, b.Status AS Booking_Status, " +
+                "       COALESCE(r.Origin, b.Origin) AS Origin, " +
+                "       COALESCE(r.Destination, b.Destination) AS Destination, " +
+                "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date, " +
+                "       CASE WHEN b.Ride_ID IS NULL THEN b.Seats_Requested ELSE r.Seats_Left END AS Seats_Left, " +
+                "       CONCAT(du.First_Name, ' ', LEFT(du.Last_Name, 1), '.') AS Driver_Name, " +
+                "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                "FROM Bookings b " +
+                "JOIN Users pu ON pu.User_ID = b.User_ID " +
+                "LEFT JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+                "LEFT JOIN Users du ON du.User_ID = r.Driver_ID " +
+                "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
+                "WHERE pu.Email = ? " +
+                "  AND pu.Account_Status = 'active' " +
+                "  AND (b.Status IN ('cancelled', 'declined', 'completed') " +
+                "       OR COALESCE(r.Status, '') IN ('cancelled', 'completed')) " +
+                "ORDER BY COALESCE(r.Departure_Date, b.Departure_Date) DESC, b.Booking_ID DESC";
+
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, passengerEmail);
+                java.util.List<UpcomingRide> list = new java.util.ArrayList<>();
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new UpcomingRide(
+                            String.valueOf(rs.getInt("Booking_ID")),
+                            rs.getString("Booking_Status"),
+                            rs.getString("Origin"),
+                            rs.getString("Destination"),
+                            rs.getString("Departure_Date"),
+                            rs.getInt("Seats_Left"),
+                            rs.getString("Driver_Name"),
+                            rs.getString("Vehicle_Info")
+                        ));
+                    }
+                }
+                return list;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("getRideHistoryForPassenger failed", e);
         }
     }
 
@@ -903,7 +854,7 @@ public final class AppStore {
     public static java.util.List<String[]> getNotificationsForUser(String email) {
         try (Connection c = DBConnection.get()) {
             String sql =
-                "SELECT n.Notification_ID, n.Content, n.Timestamp " +
+                "SELECT n.Notification_ID, n.Content, n.Timestamp, n.Read_Status " +
                 "FROM Notifications n " +
                 "JOIN Users u ON u.User_ID = n.User_ID " +
                 "WHERE u.Email = ? AND u.Account_Status = 'active' " +
@@ -914,11 +865,13 @@ public final class AppStore {
                 ps.setString(1, email);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
+                        String status = rs.getString("Read_Status");
+                        if (status == null || status.isBlank()) status = "unread";
                         list.add(new String[]{
                             rs.getString("Notification_ID"),
                             rs.getString("Content"),
                             rs.getString("Timestamp"),
-                            "unread"
+                            status
                         });
                     }
                 }
@@ -931,6 +884,13 @@ public final class AppStore {
 
     /** Marks a notification as read. */
     public static void markNotificationRead(String notificationId) {
-        // Notifications no longer persist read state in the current schema.
+        String sql = "UPDATE Notifications SET Read_Status = 'read' WHERE Notification_ID = ?";
+        try (Connection c = DBConnection.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, Integer.parseInt(notificationId));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("markNotificationRead failed", e);
+        }
     }
 }
