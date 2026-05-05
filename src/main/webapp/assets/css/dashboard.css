@@ -1055,4 +1055,9 @@
   .ride-list {
     grid-template-columns: 1fr;
   }
+  
+  .ride-item--highlight {
+    border-left: 3px solid #f5a623;
+    background: rgba(245, 166, 35, 0.05);
+  }
 }
