@@ -25,8 +25,12 @@ DROP TABLE IF EXISTS `Bookings`;
 CREATE TABLE `Bookings` (
   `Booking_ID` int NOT NULL AUTO_INCREMENT,
   `User_ID` int NOT NULL,
-  `Ride_ID` int NOT NULL,
-  `Booking_Timestamp` datetime DEFAULT NULL,
+  `Ride_ID` int DEFAULT NULL,
+  `Origin` varchar(100) DEFAULT NULL,
+  `Destination` varchar(100) DEFAULT NULL,
+  `Departure_Date` datetime DEFAULT NULL,
+  `Seats_Requested` int DEFAULT NULL,
+  `Booking_Timestamp` datetime DEFAULT CURRENT_TIMESTAMP,
   `Status` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`Booking_ID`),
   KEY `fk_bookings_ride` (`Ride_ID`),
@@ -195,6 +199,7 @@ CREATE TABLE `Users` (
   `Email` varchar(100) DEFAULT NULL,
   `Gender` varchar(10) DEFAULT NULL,
   `Password_Hash` varchar(255) DEFAULT NULL,
+  `Account_Status` varchar(20) NOT NULL DEFAULT 'active',
   PRIMARY KEY (`User_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -215,6 +220,7 @@ CREATE TABLE `Vehicles` (
   `Color` varchar(20) DEFAULT NULL,
   `Total_Seats` int DEFAULT NULL,
   `Insurance_Num` varchar(50) DEFAULT NULL,
+  `Vehicle_Status` varchar(20) NOT NULL DEFAULT 'active',
   PRIMARY KEY (`Vehicle_ID`),
   KEY `fk_vehicles_driver` (`Driver_ID`),
   CONSTRAINT `fk_vehicles_driver` FOREIGN KEY (`Driver_ID`) REFERENCES `Drivers` (`User_ID`)
@@ -230,4 +236,4 @@ CREATE TABLE `Vehicles` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-04 21:56:25
+-- Dump completed on 2026-05-04 22:16:06

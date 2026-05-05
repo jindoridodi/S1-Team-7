@@ -1,8 +1,14 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.util.List" %>
+<%@ page import="model.Vehicle" %>
 <%@ page import="model.User" %>
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
+List<Vehicle> vehicles = (List<Vehicle>) request.getAttribute("vehicles");
+if (vehicles == null) {
+    vehicles = java.util.Collections.emptyList();
+}
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -37,6 +43,20 @@ User currentUser = (User) session.getAttribute("currentUser");
                         <input type="hidden" name="action" value="processCreateRide">
 
                         <div class="form-group">
+                            <label><strong>Vehicle</strong></label>
+                            <% if (vehicles.isEmpty()) { %>
+                                <p class="ride-meta" style="color: #b45309;">Add a vehicle first before creating a ride.</p>
+                            <% } else { %>
+                                <select name="vehicleId" class="login-input" required>
+                                    <option value="" disabled selected>Select a vehicle</option>
+                                    <% for (Vehicle vehicle : vehicles) { %>
+                                        <option value="<%= vehicle.getId() %>"><%= vehicle.getColor() %> <%= vehicle.getMake() %> <%= vehicle.getModel() %> (Plate <%= vehicle.getPlate() %>)</option>
+                                    <% } %>
+                                </select>
+                            <% } %>
+                        </div>
+
+                        <div class="form-group">
                             <label><strong>Pickup Location (Origin)</strong></label>
                             <input type="text" name="origin" class="login-input" placeholder="e.g. King Library" required>
                         </div>
@@ -58,7 +78,7 @@ User currentUser = (User) session.getAttribute("currentUser");
 
                         <hr class="rule">
 
-                        <button type="submit" class="action-create u-w-100 u-text-center booking-submit">
+                        <button type="submit" class="action-create u-w-100 u-text-center booking-submit" <%= vehicles.isEmpty() ? "disabled" : "" %>>
                             Post Ride Offer
                         </button>
                     </form>

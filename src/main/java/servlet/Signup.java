@@ -1,7 +1,8 @@
 package servlet;
 
 import model.User;
-import store.AppStore;
+import repository.PasswordUtil;
+import repository.UserRepository;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -67,7 +68,7 @@ public class Signup extends HttpServlet {
             req.setAttribute("errorEmail", "Email is required.");
         } else if (!EMAIL_PATTERN.matcher(email).matches()) {
             req.setAttribute("errorEmail", "Enter a valid email address.");
-        } else if (AppStore.hasUser(email)) {
+        } else if (UserRepository.hasUser(email)) {
             req.setAttribute("errorEmail", "This email is already registered.");
         }
 
@@ -78,7 +79,7 @@ public class Signup extends HttpServlet {
 
         if (password.isBlank()) {
             req.setAttribute("errorPassword", "Password is required.");
-        } else if (!AppStore.isStrongPassword(password)) {
+        } else if (!PasswordUtil.isStrongPassword(password)) {
             req.setAttribute("errorPassword",
                 "Password must be at least 8 characters and include 1 uppercase letter, 1 lowercase letter, and 1 number.");
         }
@@ -112,7 +113,7 @@ public class Signup extends HttpServlet {
             return;
         }
 
-        User user = AppStore.createUser(firstName, lastName, email, sjsuId, gender, password, roles, licenseNumber);
+        User user = UserRepository.createUser(firstName, lastName, email, sjsuId, gender, password, roles, licenseNumber);
         if (user == null) {
             // Keep entered values when reporting duplicate-email failure so the user only changes the conflicting field.
             req.setAttribute("firstName",     firstName);

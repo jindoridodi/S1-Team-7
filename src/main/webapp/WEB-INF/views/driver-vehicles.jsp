@@ -44,6 +44,12 @@ if (vehicles == null) {
             <p>Add each vehicle once and keep its details current for matching and pickup.</p>
           </div>
 
+          <% if (request.getAttribute("error") != null) { %>
+            <p style="color:red; text-align:center; margin-top:10px;">
+              <%= request.getAttribute("error") %>
+            </p>
+          <% } %>
+
           <div class="vehicle-add">
             <button
               type="button"

@@ -12,7 +12,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import model.Ride;
 import model.User;
-import store.AppStore;
+import repository.BookingRepository;
+import repository.NotificationRepository;
+import repository.RideRepository;
 
 /**
  * Passenger dashboard page for authenticated non-driver users.
@@ -42,43 +44,52 @@ public class PassengerDashboard extends HttpServlet {
         String action = safe(req.getParameter("action"));
 
         if ("showCreateBookingForm".equals(action)) {
+            // Show currently available rides so the passenger can request one by Ride_ID.
+            req.setAttribute("availableRides", RideRepository.getAvailableRides());
             req.getRequestDispatcher("/WEB-INF/views/create-booking.jsp").forward(req, resp);
             return;
         }
 
-        // Load available rides for display
-        String destinationFilter = safe(req.getParameter("destination")).toLowerCase();
-String departureFilter = safe(req.getParameter("departureTime"));
-
-List<Ride> rides = AppStore.getAvailableRides();
-List<Ride> filteredRides = new ArrayList<>();
-
-for (Ride ride : rides) {
-    boolean matches = true;
-
-    // Filter by destination
-    if (!destinationFilter.isBlank() &&
-        !ride.getDestination().toLowerCase().contains(destinationFilter)) {
-        matches = false;
-    }
-
-    // Filter by departure time
-    if (!departureFilter.isBlank()) {
-        String formattedInput = departureFilter.replace("T", " ");
-        if (!ride.getDepartureDate().contains(formattedInput)) {
-            matches = false;
+        if ("showRideHistory".equals(action)) {
+            req.setAttribute("rideHistory", BookingRepository.getRideHistoryForPassenger(user.getEmail()));
+            req.getRequestDispatcher("/WEB-INF/views/passenger-ride-history.jsp").forward(req, resp);
+            return;
         }
-    }
 
-    if (matches) {
-        filteredRides.add(ride);
-    }
-}
+        // Load available rides for display
+        String originFilter = safe(req.getParameter("searchOrigin")).toLowerCase();
+        String destinationFilter = safe(req.getParameter("searchDestination")).toLowerCase();
+        // `searchDate` comes from home.jsp as yyyy-MM-dd.
+        String dateFilter = safe(req.getParameter("searchDate"));
 
-// Send filtered rides instead of all rides
-req.setAttribute("availableRides", filteredRides);
-        req.setAttribute("notifications", AppStore.getNotificationsForUser(user.getEmail()));
-        req.setAttribute("upcomingRides", AppStore.getUpcomingRidesForPassenger(user.getEmail()));
+        List<Ride> rides = RideRepository.getAvailableRides();
+        List<Ride> filteredRides = new ArrayList<>();
+
+        for (Ride ride : rides) {
+            boolean matches = true;
+
+            if (!originFilter.isBlank() &&
+                (ride.getOrigin() == null || !ride.getOrigin().toLowerCase().contains(originFilter))) {
+                matches = false;
+            }
+
+            if (!destinationFilter.isBlank() &&
+                (ride.getDestination() == null || !ride.getDestination().toLowerCase().contains(destinationFilter))) {
+                matches = false;
+            }
+
+            if (matches && !dateFilter.isBlank()) {
+                // Ride departureDate is typically "yyyy-MM-dd HH:mm:ss" from MySQL.
+                String dep = ride.getDepartureDate() == null ? "" : ride.getDepartureDate();
+                if (!dep.startsWith(dateFilter)) matches = false;
+            }
+
+            if (matches) filteredRides.add(ride);
+        }
+
+        req.setAttribute("availableRides", filteredRides);
+        req.setAttribute("notifications", NotificationRepository.getNotificationsForUser(user.getEmail()));
+        req.setAttribute("upcomingRides", BookingRepository.getUpcomingRidesForPassenger(user.getEmail()));
 
         req.getRequestDispatcher("/WEB-INF/views/passenger-dashboard.jsp").forward(req, resp);
     }
@@ -97,23 +108,26 @@ req.setAttribute("availableRides", filteredRides);
             String origin = safe(req.getParameter("origin"));
             String destination = safe(req.getParameter("destination"));
             String departureDate = safe(req.getParameter("departureDate"));
-            String seatsLeft = safe(req.getParameter("seatsLeft"));
+            String seatsNeeded = safe(req.getParameter("seatsLeft"));
 
-            if (!origin.isBlank() && !destination.isBlank() && !departureDate.isBlank()) {
+            if (!origin.isBlank() && !destination.isBlank() && !departureDate.isBlank() && !seatsNeeded.isBlank()) {
                 try {
-                    int seats = Integer.parseInt(seatsLeft);
+                    int seats = Integer.parseInt(seatsNeeded);
+                    // Standardize HTML datetime-local 'T' separator for MySQL DATETIME.
                     String sqlTimestamp = departureDate.replace("T", " ") + ":00";
-                    AppStore.createBooking(user.getEmail(), origin, destination, sqlTimestamp, seats);
+                    BookingRepository.createBooking(user.getEmail(), origin, destination, sqlTimestamp, seats);
                 } catch (NumberFormatException ignored) {
                 }
             }
         }
 
-        if ("processRideRequest".equals(action)) {
+        if ("bookExistingRide".equals(action)) {
             String rideId = safe(req.getParameter("rideId"));
-            if (!rideId.isBlank()) {
+            String seatsRequested = safe(req.getParameter("seatsRequested"));
+            if (!rideId.isBlank() && !seatsRequested.isBlank()) {
                 try {
-                    AppStore.requestSeatOnRide(user.getEmail(), Integer.parseInt(rideId));
+                    int seats = Integer.parseInt(seatsRequested);
+                    BookingRepository.bookExistingRide(user.getEmail(), rideId, seats);
                 } catch (NumberFormatException ignored) {
                 }
             }
@@ -122,14 +136,14 @@ req.setAttribute("availableRides", filteredRides);
         if ("cancelUpcomingRide".equals(action)) {
             String bookingId = safe(req.getParameter("bookingId"));
             if (!bookingId.isBlank()) {
-                AppStore.cancelUpcomingRideForPassenger(user.getEmail(), bookingId);
+                BookingRepository.cancelUpcomingRideForPassenger(user.getEmail(), bookingId);
             }
         }
 
         if ("markNotifRead".equals(action)) {
             String notifId = safe(req.getParameter("notifId"));
             if (!notifId.isBlank()) {
-                AppStore.markNotificationRead(notifId);
+                NotificationRepository.markNotificationRead(user.getEmail(), notifId);
             }
         }
 
