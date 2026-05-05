@@ -42,6 +42,8 @@ public class PassengerDashboard extends HttpServlet {
         String action = safe(req.getParameter("action"));
 
         if ("showCreateBookingForm".equals(action)) {
+            // Show currently available rides so the passenger can request one by Ride_ID.
+            req.setAttribute("availableRides", AppStore.getAvailableRides());
             req.getRequestDispatcher("/WEB-INF/views/create-booking.jsp").forward(req, resp);
             return;
         }
@@ -94,16 +96,11 @@ req.setAttribute("availableRides", filteredRides);
         String action = safe(req.getParameter("action"));
 
         if ("processCreateBooking".equals(action)) {
-            String origin = safe(req.getParameter("origin"));
-            String destination = safe(req.getParameter("destination"));
-            String departureDate = safe(req.getParameter("departureDate"));
-            String seatsLeft = safe(req.getParameter("seatsLeft"));
-
-            if (!origin.isBlank() && !destination.isBlank() && !departureDate.isBlank()) {
+            // Legacy action name; bookings should be created by selecting a Ride_ID.
+            String rideId = safe(req.getParameter("rideId"));
+            if (!rideId.isBlank()) {
                 try {
-                    int seats = Integer.parseInt(seatsLeft);
-                    String sqlTimestamp = departureDate.replace("T", " ") + ":00";
-                    AppStore.createBooking(user.getEmail(), origin, destination, sqlTimestamp, seats);
+                    AppStore.requestSeatOnRide(user.getEmail(), Integer.parseInt(rideId));
                 } catch (NumberFormatException ignored) {
                 }
             }

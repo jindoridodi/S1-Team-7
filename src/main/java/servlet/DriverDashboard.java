@@ -38,9 +38,12 @@ public class DriverDashboard extends HttpServlet {
         String status = AppStore.getDriverVerificationStatus(user.getEmail());
 
         if (status == null || !status.equalsIgnoreCase("verified")) {
-        req.setAttribute("error", "Your driver account is pending verification.");
-        req.getRequestDispatcher("/WEB-INF/views/driver-dashboard.jsp").forward(req, resp);
-        return;
+            // Keep JSP rendering in sync with access control:
+            // unverified drivers should see the pending verification screen.
+            req.setAttribute("pendingVerification", true);
+            req.setAttribute("error", "Your driver account is pending verification.");
+            req.getRequestDispatcher("/WEB-INF/views/driver-dashboard.jsp").forward(req, resp);
+            return;
         }
         
 
