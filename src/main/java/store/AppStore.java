@@ -57,13 +57,13 @@ public final class AppStore {
     private static void refreshRideStatuses(Connection c) throws SQLException {
         // Rides in the past should no longer accept bookings.
         try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE Rides SET Status = 'completed' WHERE Departure_Date <= NOW() AND Status <> 'completed'")) {
+                "UPDATE Rides SET Status = 'completed' WHERE Departure_Date <= NOW() AND Status <> 'completed' AND Status <> 'cancelled'")) {
             ps.executeUpdate();
         }
 
         // Keep seat-based status aligned for upcoming rides.
         try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE Rides SET Status = 'full' WHERE Departure_Date > NOW() AND Seats_Left <= 0 AND Status <> 'completed'")) {
+                "UPDATE Rides SET Status = 'full' WHERE Departure_Date > NOW() AND Seats_Left <= 0 AND Status <> 'completed' AND Status <> 'cancelled'")) {
             ps.executeUpdate();
         }
 
@@ -242,8 +242,7 @@ public final class AppStore {
         String sql =
             "SELECT v.Vehicle_ID, v.Make, v.Model, v.Color, v.License_Plate, v.Total_Seats, v.Insurance_Num " +
             "FROM Vehicles v " +
-            "JOIN Owns o ON o.Vehicle_ID = v.Vehicle_ID " +
-            "JOIN Users u ON u.User_ID = o.User_ID " +
+            "JOIN Users u ON u.User_ID = v.Driver_ID " +
             "WHERE u.Email = ? AND u.Account_Status = 'active'";
 
         try (Connection c = DBConnection.get();
@@ -275,32 +274,23 @@ public final class AppStore {
     public static void addVehicle(String ownerEmail, String make, String model,
                                    String color, String plate, int totalSeats, String insuranceNum) {
         String insertVehicle =
-            "INSERT INTO Vehicles (License_Plate, Make, Model, Color, Total_Seats, Insurance_Num) VALUES (?, ?, ?, ?, ?, ?)";
-        String insertOwns =
-            "INSERT INTO Owns (User_ID, Vehicle_ID) " +
-            "SELECT User_ID, ? FROM Users WHERE Email = ? AND Account_Status = 'active'";
+            "INSERT INTO Vehicles (Driver_ID, License_Plate, Make, Model, Color, Total_Seats, Insurance_Num) " +
+            "SELECT u.User_ID, ?, ?, ?, ?, ?, ? FROM Users u " +
+            "JOIN Drivers d ON d.User_ID = u.User_ID " +
+            "WHERE u.Email = ? AND u.Account_Status = 'active'";
 
         try (Connection c = DBConnection.get()) {
-            int vehicleId;
-            try (PreparedStatement pv = c.prepareStatement(
-                    insertVehicle, Statement.RETURN_GENERATED_KEYS)) {
+            try (PreparedStatement pv = c.prepareStatement(insertVehicle)) {
                 pv.setString(1, plate);
                 pv.setString(2, make);
                 pv.setString(3, model);
                 pv.setString(4, color);
                 pv.setInt(5, totalSeats);
                 pv.setString(6, insuranceNum);
-                pv.executeUpdate();
-                try (ResultSet keys = pv.getGeneratedKeys()) {
-                    if (!keys.next()) throw new SQLException("No generated key for vehicle");
-                    vehicleId = keys.getInt(1);
+                pv.setString(7, ownerEmail);
+                if (pv.executeUpdate() == 0) {
+                    throw new SQLException("No driver row found for vehicle assignment");
                 }
-            }
-
-            try (PreparedStatement po = c.prepareStatement(insertOwns)) {
-                po.setInt(1, vehicleId);
-                po.setString(2, ownerEmail);
-                po.executeUpdate();
             }
 
         } catch (SQLException e) {
@@ -314,8 +304,7 @@ public final class AppStore {
             "UPDATE Vehicles v " +
             "SET v.Make = ?, v.Model = ?, v.Color = ?, v.License_Plate = ?, v.Total_Seats = ?, v.Insurance_Num = ? " +
             "WHERE v.Vehicle_ID = ? " +
-            "AND EXISTS (SELECT 1 FROM Owns o JOIN Users u ON u.User_ID = o.User_ID " +
-            "            WHERE o.Vehicle_ID = v.Vehicle_ID AND u.Email = ?)";
+            "AND EXISTS (SELECT 1 FROM Users u WHERE u.User_ID = v.Driver_ID AND u.Email = ? AND u.Account_Status = 'active')";
 
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -336,9 +325,8 @@ public final class AppStore {
     public static void deleteVehicle(String ownerEmail, String vehicleId) {
         String sql =
             "DELETE v FROM Vehicles v " +
-            "JOIN Owns o ON o.Vehicle_ID = v.Vehicle_ID " +
-            "JOIN Users u ON u.User_ID = o.User_ID " +
-            "WHERE u.Email = ? AND v.Vehicle_ID = ?";
+            "JOIN Users u ON u.User_ID = v.Driver_ID " +
+            "WHERE u.Email = ? AND u.Account_Status = 'active' AND v.Vehicle_ID = ?";
 
         try (Connection c = DBConnection.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -353,60 +341,34 @@ public final class AppStore {
     // --------------------------------------------------------------- rides
 
     public static void createBooking(String passengerEmail, String origin, String destination, String departureDate, int seatsLeft) {
-        String nextRideIdSql = "SELECT COALESCE(MAX(Ride_ID), 0) + 1 AS Next_Ride_ID FROM Rides";
-        String nextBookingIdSql = "SELECT COALESCE(MAX(Booking_ID), 0) + 1 AS Next_Booking_ID FROM Bookings";
-        String insertRide = "INSERT INTO Rides (Ride_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
-                            "VALUES (?, ?, ?, ?, ?, 'open')";
-        String insertBooking = "INSERT INTO Bookings (Booking_ID, Booking_Timestamp, Status) VALUES (?, CURRENT_TIMESTAMP, 'pending')";
-        String linkBookingRide = "INSERT INTO Booking_Ride (Booking_ID, Ride_ID) VALUES (?, ?)";
-        String linkPassengerBooking =
-            "INSERT INTO Makes (User_ID, Booking_ID) " +
-            "SELECT u.User_ID, ? FROM Users u " +
-            "WHERE u.Email = ? AND u.Account_Status = 'active'";
+        String rideLookupSql =
+            "SELECT Ride_ID FROM Rides " +
+            "WHERE Origin = ? AND Destination = ? AND Departure_Date = ? AND Status = 'open' AND Seats_Left >= ? " +
+            "ORDER BY Ride_ID ASC LIMIT 1 FOR UPDATE";
+        String bookingInsertSql =
+            "INSERT INTO Bookings (User_ID, Ride_ID, Booking_Timestamp, Status) VALUES ((SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active'), ?, CURRENT_TIMESTAMP, 'pending')";
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
 
             int rideId;
-            try (PreparedStatement rideIdStatement = c.prepareStatement(nextRideIdSql);
-                 ResultSet rideRows = rideIdStatement.executeQuery()) {
-                if (!rideRows.next()) {
-                    throw new SQLException("Unable to allocate ride id");
+            try (PreparedStatement rideLookupStatement = c.prepareStatement(rideLookupSql)) {
+                rideLookupStatement.setString(1, origin);
+                rideLookupStatement.setString(2, destination);
+                rideLookupStatement.setString(3, departureDate);
+                rideLookupStatement.setInt(4, seatsLeft);
+                try (ResultSet rideRows = rideLookupStatement.executeQuery()) {
+                    if (!rideRows.next()) {
+                        throw new SQLException("No matching ride found");
+                    }
+                    rideId = rideRows.getInt("Ride_ID");
                 }
-                rideId = rideRows.getInt("Next_Ride_ID");
             }
 
-            int bookingId;
-            try (PreparedStatement bookingIdStatement = c.prepareStatement(nextBookingIdSql);
-                 ResultSet bookingRows = bookingIdStatement.executeQuery()) {
-                if (!bookingRows.next()) {
-                    throw new SQLException("Unable to allocate booking id");
-                }
-                bookingId = bookingRows.getInt("Next_Booking_ID");
-            }
-
-            try (PreparedStatement rideStatement = c.prepareStatement(insertRide);
-                 PreparedStatement bookingStatement = c.prepareStatement(insertBooking);
-                 PreparedStatement linkStatement = c.prepareStatement(linkBookingRide);
-                 PreparedStatement makesStatement = c.prepareStatement(linkPassengerBooking)) {
-
-                rideStatement.setInt(1, rideId);
-                rideStatement.setString(2, origin);
-                rideStatement.setString(3, destination);
-                rideStatement.setString(4, departureDate);
-                rideStatement.setInt(5, seatsLeft);
-                rideStatement.executeUpdate();
-
-                bookingStatement.setInt(1, bookingId);
-                bookingStatement.executeUpdate();
-
-                linkStatement.setInt(1, bookingId);
-                linkStatement.setInt(2, rideId);
-                linkStatement.executeUpdate();
-
-                makesStatement.setInt(1, bookingId);
-                makesStatement.setString(2, passengerEmail);
-                if (makesStatement.executeUpdate() == 0) {
+            try (PreparedStatement bookingStatement = c.prepareStatement(bookingInsertSql)) {
+                bookingStatement.setString(1, passengerEmail);
+                bookingStatement.setInt(2, rideId);
+                if (bookingStatement.executeUpdate() == 0) {
                     throw new SQLException("No passenger row found for booking");
                 }
 
@@ -437,16 +399,8 @@ public final class AppStore {
     private static void createBookingForRideInternal(String passengerEmail, int rideId, String bookingStatus) {
         String rideCheckSql =
             "SELECT Ride_ID, Seats_Left, Status, Departure_Date FROM Rides WHERE Ride_ID = ? FOR UPDATE";
-        String nextBookingIdSql =
-            "SELECT COALESCE(MAX(Booking_ID), 0) + 1 AS Next_Booking_ID FROM Bookings";
         String insertBooking =
-            "INSERT INTO Bookings (Booking_ID, Booking_Timestamp, Status) VALUES (?, CURRENT_TIMESTAMP, ?)";
-        String linkBookingRide =
-            "INSERT INTO Booking_Ride (Booking_ID, Ride_ID) VALUES (?, ?)";
-        String linkPassengerBooking =
-            "INSERT INTO Makes (User_ID, Booking_ID) " +
-            "SELECT u.User_ID, ? FROM Users u " +
-            "WHERE u.Email = ? AND u.Account_Status = 'active'";
+            "INSERT INTO Bookings (User_ID, Ride_ID, Booking_Timestamp, Status) VALUES ((SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active'), ?, CURRENT_TIMESTAMP, ?)";
         String decreaseRideSeat =
             "UPDATE Rides SET Seats_Left = Seats_Left - 1 WHERE Ride_ID = ? AND Seats_Left > 0";
         String setFullIfNeeded =
@@ -478,32 +432,14 @@ public final class AppStore {
                 throw new SQLException("Ride is not available for booking");
             }
 
-            int bookingId;
-            try (PreparedStatement bookingIdStatement = c.prepareStatement(nextBookingIdSql);
-                 ResultSet bookingRows = bookingIdStatement.executeQuery()) {
-                if (!bookingRows.next()) {
-                    throw new SQLException("Unable to allocate booking id");
-                }
-                bookingId = bookingRows.getInt("Next_Booking_ID");
-            }
+            try (PreparedStatement bookingStatement = c.prepareStatement(insertBooking);
+                 PreparedStatement decreaseSeatStatement = c.prepareStatement(decreaseRideSeat);
+                 PreparedStatement setFullStatement = c.prepareStatement(setFullIfNeeded)) {
 
-              try (PreparedStatement bookingStatement = c.prepareStatement(insertBooking);
-                 PreparedStatement linkStatement = c.prepareStatement(linkBookingRide);
-                  PreparedStatement makesStatement = c.prepareStatement(linkPassengerBooking);
-                  PreparedStatement decreaseSeatStatement = c.prepareStatement(decreaseRideSeat);
-                  PreparedStatement setFullStatement = c.prepareStatement(setFullIfNeeded)) {
-
-                bookingStatement.setInt(1, bookingId);
-                 bookingStatement.setString(2, bookingStatus);
-                bookingStatement.executeUpdate();
-
-                linkStatement.setInt(1, bookingId);
-                linkStatement.setInt(2, rideId);
-                linkStatement.executeUpdate();
-
-                makesStatement.setInt(1, bookingId);
-                makesStatement.setString(2, passengerEmail);
-                if (makesStatement.executeUpdate() == 0) {
+                bookingStatement.setString(1, passengerEmail);
+                bookingStatement.setInt(2, rideId);
+                bookingStatement.setString(3, bookingStatus);
+                if (bookingStatement.executeUpdate() == 0) {
                     throw new SQLException("No passenger row found for booking");
                 }
 
@@ -532,14 +468,10 @@ public final class AppStore {
         String sql =
             "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
             "       CONCAT(u.First_Name, ' ', LEFT(u.Last_Name, 1), '.') AS Driver_Name, " +
-            "       (SELECT CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') " +
-            "        FROM Owns o2 " +
-            "        JOIN Vehicles v ON v.Vehicle_ID = o2.Vehicle_ID " +
-            "        WHERE o2.User_ID = u.User_ID " +
-            "        ORDER BY v.Vehicle_ID ASC LIMIT 1) AS Vehicle_Info " +
+            "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
             "FROM Rides r " +
-            "LEFT JOIN Schedules s ON s.Ride_ID = r.Ride_ID " +
-            "LEFT JOIN Users u ON u.User_ID = s.User_ID " +
+            "LEFT JOIN Users u ON u.User_ID = r.Driver_ID " +
+            "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
             "WHERE r.Status = 'open' " +
             "  AND r.Seats_Left > 0 " +
             "  AND r.Departure_Date > NOW() " +
@@ -573,18 +505,12 @@ public final class AppStore {
             "SELECT b.Booking_ID, b.Status AS Booking_Status, " +
             "       r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, " +
             "       CONCAT(du.First_Name, ' ', LEFT(du.Last_Name, 1), '.') AS Driver_Name, " +
-            "       (SELECT CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') " +
-            "        FROM Owns o2 " +
-            "        JOIN Vehicles v ON v.Vehicle_ID = o2.Vehicle_ID " +
-            "        WHERE o2.User_ID = du.User_ID " +
-            "        ORDER BY v.Vehicle_ID ASC LIMIT 1) AS Vehicle_Info " +
+            "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
             "FROM Bookings b " +
-            "JOIN Makes m ON m.Booking_ID = b.Booking_ID " +
-            "JOIN Users pu ON pu.User_ID = m.User_ID " +
-            "JOIN Booking_Ride br ON br.Booking_ID = b.Booking_ID " +
-            "JOIN Rides r ON r.Ride_ID = br.Ride_ID " +
-            "LEFT JOIN Schedules s ON s.Ride_ID = r.Ride_ID " +
-            "LEFT JOIN Users du ON du.User_ID = s.User_ID " +
+            "JOIN Users pu ON pu.User_ID = b.User_ID " +
+            "JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+            "LEFT JOIN Users du ON du.User_ID = r.Driver_ID " +
+            "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
             "WHERE pu.Email = ? " +
             "  AND pu.Account_Status = 'active' " +
             "  AND b.Status IN ('pending', 'accepted') " +
@@ -620,10 +546,8 @@ public final class AppStore {
         String selectSql =
             "SELECT b.Status AS Booking_Status, r.Ride_ID, r.Status AS Ride_Status, r.Departure_Date " +
             "FROM Bookings b " +
-            "JOIN Makes m ON m.Booking_ID = b.Booking_ID " +
-            "JOIN Users pu ON pu.User_ID = m.User_ID " +
-            "JOIN Booking_Ride br ON br.Booking_ID = b.Booking_ID " +
-            "JOIN Rides r ON r.Ride_ID = br.Ride_ID " +
+            "JOIN Users pu ON pu.User_ID = b.User_ID " +
+            "JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
             "WHERE b.Booking_ID = ? " +
             "  AND pu.Email = ? " +
             "  AND pu.Account_Status = 'active' " +
@@ -693,12 +617,9 @@ public final class AppStore {
             "       CONCAT(pu.First_Name, ' ', LEFT(pu.Last_Name, 1), '.') AS Passenger_Name, " +
             "       r.Origin, r.Destination, r.Departure_Date, r.Seats_Left " +
             "FROM Bookings b " +
-            "JOIN Booking_Ride br ON br.Booking_ID = b.Booking_ID " +
-            "JOIN Rides r ON r.Ride_ID = br.Ride_ID " +
-            "JOIN Schedules s ON s.Ride_ID = r.Ride_ID " +
-            "JOIN Users du ON du.User_ID = s.User_ID " +
-            "JOIN Makes m ON m.Booking_ID = b.Booking_ID " +
-            "JOIN Users pu ON pu.User_ID = m.User_ID " +
+            "JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+            "JOIN Users du ON du.User_ID = r.Driver_ID " +
+            "JOIN Users pu ON pu.User_ID = b.User_ID " +
             "WHERE du.Email = ? AND du.Account_Status = 'active' " +
             "ORDER BY b.Booking_Timestamp DESC";
 
@@ -733,10 +654,8 @@ public final class AppStore {
         String selectSql =
             "SELECT b.Status AS Booking_Status, r.Ride_ID, r.Seats_Left, r.Status AS Ride_Status, r.Departure_Date " +
             "FROM Bookings b " +
-            "JOIN Booking_Ride br ON br.Booking_ID = b.Booking_ID " +
-            "JOIN Rides r ON r.Ride_ID = br.Ride_ID " +
-            "JOIN Schedules s ON s.Ride_ID = r.Ride_ID " +
-            "JOIN Users du ON du.User_ID = s.User_ID " +
+            "JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+            "JOIN Users du ON du.User_ID = r.Driver_ID " +
             "WHERE b.Booking_ID = ? " +
             "  AND du.Email = ? " +
             "  AND du.Account_Status = 'active' " +
@@ -816,42 +735,27 @@ public final class AppStore {
         }
     }
 
-    public static void createRide(String driverEmail, String origin, String destination, String departureDate, int seatsLeft) {
-        String nextRideIdSql = "SELECT COALESCE(MAX(Ride_ID), 0) + 1 AS Next_Ride_ID FROM Rides";
-        String insertRide = "INSERT INTO Rides (Ride_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
-                            "VALUES (?, ?, ?, ?, ?, 'open')";
-        String assignDriver =
-            "INSERT INTO Schedules (User_ID, Ride_ID) " +
-            "SELECT u.User_ID, ? FROM Users u " +
+    public static void createRide(String driverEmail, String vehicleId, String origin, String destination, String departureDate, int seatsLeft) {
+        String insertRide =
+            "INSERT INTO Rides (Driver_ID, Vehicle_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
+            "SELECT d.User_ID, v.Vehicle_ID, ?, ?, ?, ?, 'open' " +
+            "FROM Users u " +
             "JOIN Drivers d ON d.User_ID = u.User_ID " +
+            "JOIN Vehicles v ON v.Vehicle_ID = ? AND v.Driver_ID = d.User_ID " +
             "WHERE u.Email = ? AND u.Account_Status = 'active'";
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
 
-            int rideId;
-            try (PreparedStatement nextRideIdStatement = c.prepareStatement(nextRideIdSql);
-                 ResultSet nextRideIdRows = nextRideIdStatement.executeQuery()) {
-                if (!nextRideIdRows.next()) {
-                    throw new SQLException("Unable to allocate ride id");
-                }
-                rideId = nextRideIdRows.getInt("Next_Ride_ID");
-            }
-
-            try (PreparedStatement rideStatement = c.prepareStatement(insertRide, Statement.RETURN_GENERATED_KEYS)) {
-                rideStatement.setInt(1, rideId);
-                rideStatement.setString(2, origin);
-                rideStatement.setString(3, destination);
-                rideStatement.setString(4, departureDate);
-                rideStatement.setInt(5, seatsLeft);
-                rideStatement.executeUpdate();
-
-                try (PreparedStatement scheduleStatement = c.prepareStatement(assignDriver)) {
-                    scheduleStatement.setInt(1, rideId);
-                    scheduleStatement.setString(2, driverEmail);
-                    if (scheduleStatement.executeUpdate() == 0) {
-                        throw new SQLException("No driver row found for ride assignment");
-                    }
+            try (PreparedStatement rideStatement = c.prepareStatement(insertRide)) {
+                rideStatement.setString(1, origin);
+                rideStatement.setString(2, destination);
+                rideStatement.setString(3, departureDate);
+                rideStatement.setInt(4, seatsLeft);
+                rideStatement.setInt(5, Integer.parseInt(vehicleId));
+                rideStatement.setString(6, driverEmail);
+                if (rideStatement.executeUpdate() == 0) {
+                    throw new SQLException("No driver row found for ride assignment");
                 }
 
                 c.commit();
@@ -871,8 +775,7 @@ public final class AppStore {
         String sql =
             "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status " +
             "FROM Rides r " +
-            "JOIN Schedules s ON s.Ride_ID = r.Ride_ID " +
-            "JOIN Users u ON u.User_ID = s.User_ID " +
+            "JOIN Users u ON u.User_ID = r.Driver_ID " +
             "WHERE u.Email = ? AND u.Account_Status = 'active' " +
             "ORDER BY r.Departure_Date DESC";
 
@@ -907,32 +810,22 @@ public final class AppStore {
         String verifySQL =
             "SELECT r.Status, r.Origin, r.Destination " +
             "FROM Rides r " +
-            "JOIN Schedules s ON s.Ride_ID = r.Ride_ID " +
-            "JOIN Users u ON u.User_ID = s.User_ID " +
+            "JOIN Users u ON u.User_ID = r.Driver_ID " +
             "WHERE r.Ride_ID = ? AND u.Email = ? AND u.Account_Status = 'active' FOR UPDATE";
 
         String getPassengersSQL =
-            "SELECT u.User_ID " +
-            "FROM Users u " +
-            "JOIN Makes m ON m.User_ID = u.User_ID " +
-            "JOIN Bookings b ON b.Booking_ID = m.Booking_ID " +
-            "JOIN Booking_Ride br ON br.Booking_ID = b.Booking_ID " +
-            "WHERE br.Ride_ID = ? AND b.Status IN ('pending', 'accepted')";
+            "SELECT b.User_ID " +
+            "FROM Bookings b " +
+            "WHERE b.Ride_ID = ? AND b.Status IN ('pending', 'accepted')";
 
         String cancelBookingsSQL =
-            "UPDATE Bookings b " +
-            "JOIN Booking_Ride br ON br.Booking_ID = b.Booking_ID " +
-            "SET b.Status = 'cancelled' " +
-            "WHERE br.Ride_ID = ? AND b.Status IN ('pending', 'accepted')";
+            "UPDATE Bookings SET Status = 'cancelled' WHERE Ride_ID = ? AND Status IN ('pending', 'accepted')";
 
         String cancelRideSQL =
             "UPDATE Rides SET Status = 'cancelled' WHERE Ride_ID = ?";
 
         String insertNotifSQL =
-            "INSERT INTO Notifications (Content, Timestamp, Read_Status) VALUES (?, NOW(), 'unread')";
-
-        String insertPersonalizesSQL =
-            "INSERT INTO Personalizes (User_ID, Notification_ID) VALUES (?, ?)";
+            "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
@@ -979,19 +872,11 @@ public final class AppStore {
             // Notify each affected passenger.
             if (!passengerIds.isEmpty()) {
                 String message = "Your ride from " + origin + " to " + destination + " has been cancelled by the driver.";
-                try (PreparedStatement psNotif = c.prepareStatement(insertNotifSQL, Statement.RETURN_GENERATED_KEYS);
-                     PreparedStatement psPersonalizes = c.prepareStatement(insertPersonalizesSQL)) {
+                try (PreparedStatement psNotif = c.prepareStatement(insertNotifSQL)) {
                     for (int userId : passengerIds) {
-                        psNotif.setString(1, message);
+                        psNotif.setInt(1, userId);
+                        psNotif.setString(2, message);
                         psNotif.executeUpdate();
-                        int notifId;
-                        try (ResultSet keys = psNotif.getGeneratedKeys()) {
-                            if (!keys.next()) continue;
-                            notifId = keys.getInt(1);
-                        }
-                        psPersonalizes.setInt(1, userId);
-                        psPersonalizes.setInt(2, notifId);
-                        psPersonalizes.executeUpdate();
                     }
                 }
             }
@@ -1008,10 +893,9 @@ public final class AppStore {
     /** Returns all notifications for a user, most recent first. */
     public static java.util.List<String[]> getNotificationsForUser(String email) {
         String sql =
-            "SELECT n.Notification_ID, n.Content, n.Timestamp, n.Read_Status " +
+            "SELECT n.Notification_ID, n.Content, n.Timestamp " +
             "FROM Notifications n " +
-            "JOIN Personalizes p ON p.Notification_ID = n.Notification_ID " +
-            "JOIN Users u ON u.User_ID = p.User_ID " +
+            "JOIN Users u ON u.User_ID = n.User_ID " +
             "WHERE u.Email = ? AND u.Account_Status = 'active' " +
             "ORDER BY n.Timestamp DESC";
 
@@ -1025,7 +909,7 @@ public final class AppStore {
                         rs.getString("Notification_ID"),
                         rs.getString("Content"),
                         rs.getString("Timestamp"),
-                        rs.getString("Read_Status")
+                        "unread"
                     });
                 }
             }
@@ -1037,13 +921,6 @@ public final class AppStore {
 
     /** Marks a notification as read. */
     public static void markNotificationRead(String notificationId) {
-        String sql = "UPDATE Notifications SET Read_Status = 'read' WHERE Notification_ID = ?";
-        try (Connection c = DBConnection.get();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, Integer.parseInt(notificationId));
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("markNotificationRead failed", e);
-        }
+        // Notifications no longer persist read state in the current schema.
     }
 }

@@ -87,17 +87,18 @@ public class DriverDashboard extends HttpServlet {
 
         // Handles the persistence of a new ride post
         if ("processCreateRide".equals(action)) {
+            String vehicleId = safe(req.getParameter("vehicleId"));
             String origin = safe(req.getParameter("origin"));
             String destination = safe(req.getParameter("destination"));
             String departureDate = safe(req.getParameter("departureDate")); 
             String seatsLeft = safe(req.getParameter("seatsLeft"));
 
-            if (!origin.isBlank() && !destination.isBlank() && !departureDate.isBlank()) {
+            if (!vehicleId.isBlank() && !origin.isBlank() && !destination.isBlank() && !departureDate.isBlank()) {
                 try {
                     int seats = Integer.parseInt(seatsLeft);
                     // Standardize HTML T-separator for MySQL DATETIME
                     String sqlTimestamp = departureDate.replace("T", " ") + ":00";
-                    AppStore.createRide(user.getEmail(), origin, destination, sqlTimestamp, seats);
+                    AppStore.createRide(user.getEmail(), vehicleId, origin, destination, sqlTimestamp, seats);
                 } catch (NumberFormatException ignored) {}
             }
         }

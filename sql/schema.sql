@@ -195,6 +195,7 @@ CREATE TABLE `Users` (
   `Email` varchar(100) DEFAULT NULL,
   `Gender` varchar(10) DEFAULT NULL,
   `Password_Hash` varchar(255) DEFAULT NULL,
+  `Account_Status` varchar(20) NOT NULL DEFAULT 'active',
   PRIMARY KEY (`User_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -230,4 +231,4 @@ CREATE TABLE `Vehicles` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-04 21:56:25
+-- Dump completed on 2026-05-04 22:16:06
