@@ -8,6 +8,8 @@ java.util.List<model.UpcomingRide> upcomingRides = (java.util.List<model.Upcomin
 if (upcomingRides == null) {
   upcomingRides = java.util.Collections.emptyList();
 }
+java.util.List<String[]> savedRoutes = (java.util.List<String[]>) request.getAttribute("savedRoutes");
+if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,6 +21,12 @@ if (upcomingRides == null) {
   <link rel="stylesheet" href="<%= cp %>/assets/css/home.css?v=20260427" />
   <link rel="stylesheet" href="<%= cp %>/assets/css/login.css?v=20260427" />
   <link rel="stylesheet" href="<%= cp %>/assets/css/dashboard.css?v=20260427" />
+  <style>
+    .ride-item--highlight {
+      border-left: 3px solid #f5a623;
+      background: rgba(245, 166, 35, 0.05);
+    }
+  </style>
 </head>
 <body>
   <div class="login-page dashboard-page">
@@ -40,39 +48,72 @@ if (upcomingRides == null) {
       <div class="dashboard-main-inner">
 
         <%
-  java.util.List<String[]> notifications = (java.util.List<String[]>) request.getAttribute("notifications");
-  if (notifications == null) notifications = java.util.Collections.emptyList();
-  long unreadCount = notifications.stream().filter(n -> "unread".equals(n[3])).count();
-%>
+          java.util.List<String[]> notifications = (java.util.List<String[]>) request.getAttribute("notifications");
+          if (notifications == null) notifications = java.util.Collections.emptyList();
+          long unreadCount = notifications.stream().filter(n -> "unread".equals(n[3])).count();
+        %>
 
-<% if (!notifications.isEmpty()) { %>
-  <section class="dashboard-section dashboard-passenger-section">
-    <div class="dashboard-section-heading">
-      <h3>Notifications <% if (unreadCount > 0) { %><span class="notif-badge"><%= unreadCount %></span><% } %></h3>
-    </div>
-    <div class="ride-list">
-      <% for (String[] notif : notifications) {
-           boolean isUnread = "unread".equals(notif[3]);
-      %>
-        <div class="ride-item <%= isUnread ? "notif-unread" : "" %>">
-          <div class="ride-row">
-            <div class="ride-info">
-              <small class="ride-meta"><%= notif[1] %></small>
-              <small class="ride-meta"><%= notif[2] %></small>
+        <% if (!notifications.isEmpty()) { %>
+          <section class="dashboard-section dashboard-passenger-section">
+            <div class="dashboard-section-heading">
+              <h3>Notifications <% if (unreadCount > 0) { %><span class="notif-badge"><%= unreadCount %></span><% } %></h3>
             </div>
-            <% if (isUnread) { %>
-              <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
-                <input type="hidden" name="action" value="markNotifRead" />
-                <input type="hidden" name="notifId" value="<%= notif[0] %>" />
-                <button type="submit" class="request-approve">Mark Read</button>
-              </form>
-            <% } %>
+            <div class="ride-list">
+              <% for (String[] notif : notifications) {
+                   boolean isUnread = "unread".equals(notif[3]);
+              %>
+                <div class="ride-item <%= isUnread ? "notif-unread" : "" %>">
+                  <div class="ride-row">
+                    <div class="ride-info">
+                      <small class="ride-meta"><%= notif[1] %></small>
+                      <small class="ride-meta"><%= notif[2] %></small>
+                    </div>
+                    <% if (isUnread) { %>
+                      <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
+                        <input type="hidden" name="action" value="markNotifRead" />
+                        <input type="hidden" name="notifId" value="<%= notif[0] %>" />
+                        <button type="submit" class="request-approve">Mark Read</button>
+                      </form>
+                    <% } %>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          </section>
+        <% } %>
+
+        <section class="dashboard-section dashboard-passenger-section">
+          <div class="dashboard-section-heading">
+            <h3>My Saved Routes</h3>
+            <p>Save your frequent routes and we'll highlight matching rides for you.</p>
           </div>
-        </div>
-      <% } %>
-    </div>
-  </section>
-<% } %>
+
+          <% if (!savedRoutes.isEmpty()) { %>
+            <div class="ride-list" style="margin-bottom: 1rem;">
+              <% for (String[] route : savedRoutes) { %>
+                <div class="ride-item">
+                  <div class="ride-row">
+                    <div class="ride-info">
+                      <strong><%= route[1] %> &rarr; <%= route[2] %></strong>
+                    </div>
+                    <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
+                      <input type="hidden" name="action" value="deleteRoute" />
+                      <input type="hidden" name="routeId" value="<%= route[0] %>" />
+                      <button type="submit" class="request-decline">Remove</button>
+                    </form>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+
+          <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-form-grid">
+            <input type="hidden" name="action" value="saveRoute" />
+            <input type="text" name="startLocation" placeholder="From (e.g. Fremont)" required />
+            <input type="text" name="endLocation" placeholder="To (e.g. SJSU)" required />
+            <button type="submit" class="login-submit">Save Route</button>
+          </form>
+        </section>
 
         <section class="dashboard-hero dashboard-section">
           <div class="dashboard-hero-copy">
@@ -141,7 +182,7 @@ if (upcomingRides == null) {
               <% } %>
             </div>
           <% } %>
-          </section>
+        </section>
 
         <section class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
@@ -153,7 +194,6 @@ if (upcomingRides == null) {
             <input id="rides-filter-text" type="text" placeholder="Filter by origin, destination, driver, or vehicle" class="dashboard-search dashboard-search--text" />
             <input id="rides-filter-date" type="date" class="dashboard-search dashboard-search--date" />
             <input id="rides-filter-hours" type="number" placeholder="Hours until departure" class="dashboard-search" min="0" />
-          
           </div>
 
           <div id="rides-list" class="ride-list ride-list--spaced">
@@ -172,11 +212,21 @@ if (upcomingRides == null) {
               <div id="no-rides" class="dashboard-empty dashboard-empty--spaced is-hidden">
                 <p>No active rides found for your search.</p>
               </div>
-              <% for (model.Ride ride : availableRides) { %>
-                <div class="ride-item" data-origin="<%= ride.getOrigin().toLowerCase() %>" data-destination="<%= ride.getDestination().toLowerCase() %>" data-driver="<%= (ride.getDriverName() == null ? "" : ride.getDriverName()).toLowerCase() %>" data-vehicle="<%= (ride.getVehicleInfo() == null ? "" : ride.getVehicleInfo()).toLowerCase() %>" data-departure="<%= ride.getDepartureDate().toLowerCase() %>">
+              <% for (model.Ride ride : availableRides) {
+                   boolean isMatch = false;
+                   for (String[] sr : savedRoutes) {
+                     if (ride.getOrigin().toLowerCase().contains(sr[1].toLowerCase()) &&
+                         ride.getDestination().toLowerCase().contains(sr[2].toLowerCase())) {
+                       isMatch = true;
+                       break;
+                     }
+                   }
+              %>
+                <div class="ride-item <%= isMatch ? "ride-item--highlight" : "" %>" data-origin="<%= ride.getOrigin().toLowerCase() %>" data-destination="<%= ride.getDestination().toLowerCase() %>" data-driver="<%= (ride.getDriverName() == null ? "" : ride.getDriverName()).toLowerCase() %>" data-vehicle="<%= (ride.getVehicleInfo() == null ? "" : ride.getVehicleInfo()).toLowerCase() %>" data-departure="<%= ride.getDepartureDate().toLowerCase() %>">
                   <div class="ride-row">
                     <div class="ride-info">
                       <strong><%= ride.getOrigin() %> → <%= ride.getDestination() %></strong><br />
+                      <% if (isMatch) { %><small class="ride-meta" style="color:#f5a623;">★ Matches your saved route</small><% } %>
                       <small class="ride-meta">Status: <%= ride.getStatus() %></small>
                       <%
                         String rawDeparture = ride.getDepartureDate();
@@ -230,9 +280,7 @@ if (upcomingRides == null) {
             <% } %>
           </div>
 
-
           <script>
-            // Pre-fill filters from home page search
             const params = new URLSearchParams(window.location.search);
             if (params.get('searchDestination')) document.getElementById('rides-filter-text').value = params.get('searchDestination');
             else if (params.get('searchOrigin')) document.getElementById('rides-filter-text').value = params.get('searchOrigin');
@@ -264,7 +312,6 @@ if (upcomingRides == null) {
                     const now = new Date();
                     const rideTime = new Date(departure.replace(' ', 'T'));
                     const diffHours = (rideTime - now) / (1000 * 60 * 60);
-
                     hoursMatches = diffHours >= 0 && diffHours <= parseFloat(hoursQuery);
                   }
                   const textMatches = !textQuery || origin.includes(textQuery) || destination.includes(textQuery) || driver.includes(textQuery) || vehicle.includes(textQuery);
