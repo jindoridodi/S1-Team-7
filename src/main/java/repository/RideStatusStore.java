@@ -39,6 +39,27 @@ final class RideStatusStore {
             ps.executeUpdate();
         }
 
+        /*
+         * When rides become completed, finalize accepted bookings and increment passenger ride totals.
+         *
+         * This is intentionally idempotent:
+         * - Only bookings currently in 'accepted' are transitioned to 'completed'
+         * - Passenger totals are incremented only for those transitioned rows
+         *
+         * Doing both changes in one statement ensures totals stay in sync with booking history.
+         */
+        try (PreparedStatement ps = c.prepareStatement(
+                "UPDATE Passengers p " +
+                "JOIN Bookings b ON b.User_ID = p.User_ID " +
+                "JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+                "SET p.Total_Rides_Taken = COALESCE(p.Total_Rides_Taken, 0) + 1, " +
+                "    b.Status = 'completed' " +
+                "WHERE b.Status = 'accepted' " +
+                "  AND r.Status = 'completed' " +
+                "  AND r.Departure_Date <= NOW()")) {
+            ps.executeUpdate();
+        }
+
         // Keep seat-based status aligned for upcoming rides.
         try (PreparedStatement ps = c.prepareStatement(
                 /* Mark upcoming rides full once seats are exhausted (avoid overriding completed/cancelled). */
