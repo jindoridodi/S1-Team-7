@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
  */
 public class Signup extends HttpServlet {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    /** Campus accounts only: local-part @ literal domain sjsu.edu (email is normalized to lowercase before match). */
+    private static final Pattern SJSU_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@sjsu\\.edu$");
     private static final Pattern SJSU_ID_PATTERN = Pattern.compile("^\\d{9}$");
 
     /**
@@ -68,6 +70,8 @@ public class Signup extends HttpServlet {
             req.setAttribute("errorEmail", "Email is required.");
         } else if (!EMAIL_PATTERN.matcher(email).matches()) {
             req.setAttribute("errorEmail", "Enter a valid email address.");
+        } else if (!SJSU_EMAIL_PATTERN.matcher(email).matches()) {
+            req.setAttribute("errorEmail", "Registration requires an @sjsu.edu email address.");
         } else if (UserRepository.hasUser(email)) {
             req.setAttribute("errorEmail", "This email is already registered.");
         }
