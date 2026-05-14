@@ -86,7 +86,6 @@ if (passengerRequests == null) {
               <a href="<%= cp %>/dashboard/driver?action=showVehicles" class="login-submit action-requests u-inline-flex-center">
                 My Vehicles
               </a>
-              <button class="login-submit action-earnings" type="button">My Earnings</button>
             </div>
           </section>
 
