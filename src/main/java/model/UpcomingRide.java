@@ -12,6 +12,7 @@ public class UpcomingRide {
     private final int seats;
     private final String driverName;
     private final String vehicleInfo;
+    private final String driverGender;
 
     /**
      * Creates an upcoming ride row for passenger dashboards.
@@ -24,6 +25,7 @@ public class UpcomingRide {
      * @param seats seats requested or remaining seats depending on context
      * @param driverName formatted driver name (may be null when unassigned)
      * @param vehicleInfo formatted vehicle info (may be null when unassigned)
+     * @param driverGender driver gender when assigned; may be null
      */
     public UpcomingRide(
         String bookingId,
@@ -33,7 +35,8 @@ public class UpcomingRide {
         String departureDate,
         int seats,
         String driverName,
-        String vehicleInfo
+        String vehicleInfo,
+        String driverGender
     ) {
         this.bookingId = bookingId;
         this.bookingStatus = bookingStatus;
@@ -43,6 +46,7 @@ public class UpcomingRide {
         this.seats = seats;
         this.driverName = driverName;
         this.vehicleInfo = vehicleInfo;
+        this.driverGender = driverGender;
     }
 
     public String getBookingId() { return bookingId; }
@@ -53,4 +57,5 @@ public class UpcomingRide {
     public int getSeats() { return seats; }
     public String getDriverName() { return driverName; }
     public String getVehicleInfo() { return vehicleInfo; }
+    public String getDriverGender() { return driverGender; }
 }

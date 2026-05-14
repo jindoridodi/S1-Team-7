@@ -180,7 +180,8 @@ public final class BookingRepository {
                     "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date, " +
                     "       CASE WHEN b.Ride_ID IS NULL THEN b.Seats_Requested ELSE r.Seats_Left END AS Seats_Left, " +
                     "       CONCAT(du.First_Name, ' ', LEFT(du.Last_Name, 1), '.') AS Driver_Name, " +
-                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info, " +
+                    "       du.Gender AS Driver_Gender " +
                     "FROM Bookings b " +
                     "JOIN Users pu ON pu.User_ID = b.User_ID " +
                     "LEFT JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
@@ -205,7 +206,8 @@ public final class BookingRepository {
                                 rs.getString("Departure_Date"),
                                 rs.getInt("Seats_Left"),
                                 rs.getString("Driver_Name"),
-                                rs.getString("Vehicle_Info")
+                                rs.getString("Vehicle_Info"),
+                                rs.getString("Driver_Gender")
                         ));
                     }
                 }
@@ -243,7 +245,8 @@ public final class BookingRepository {
                     "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date, " +
                     "       CASE WHEN b.Ride_ID IS NULL THEN b.Seats_Requested ELSE r.Seats_Left END AS Seats_Left, " +
                     "       CONCAT(du.First_Name, ' ', LEFT(du.Last_Name, 1), '.') AS Driver_Name, " +
-                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info, " +
+                    "       du.Gender AS Driver_Gender " +
                     "FROM Bookings b " +
                     "JOIN Users pu ON pu.User_ID = b.User_ID " +
                     "LEFT JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
@@ -268,7 +271,8 @@ public final class BookingRepository {
                                 rs.getString("Departure_Date"),
                                 rs.getInt("Seats_Left"),
                                 rs.getString("Driver_Name"),
-                                rs.getString("Vehicle_Info")
+                                rs.getString("Vehicle_Info"),
+                                rs.getString("Driver_Gender")
                         ));
                     }
                 }

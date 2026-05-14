@@ -133,6 +133,9 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
                       <small class="ride-meta">Booking ID: #<%= upcomingRide.getBookingId() %></small>
                       <small class="ride-meta">Status: <%= upcomingRide.getBookingStatus() %></small>
                       <small class="ride-meta">Driver: <%= upcomingRide.getDriverName() != null ? upcomingRide.getDriverName() : "Not assigned" %></small>
+                      <% if (upcomingRide.getDriverGender() != null && !upcomingRide.getDriverGender().isBlank()) { %>
+                        <small class="ride-meta">Driver gender: <%= upcomingRide.getDriverGender() %></small>
+                      <% } %>
                       <small class="ride-meta">Vehicle: <%= upcomingRide.getVehicleInfo() != null ? upcomingRide.getVehicleInfo() : "Not assigned" %></small>
                       <small class="ride-meta">Departure: <%= formattedDeparture %></small>
                       <% if (!formattedTime.isBlank()) { %>
@@ -213,6 +216,9 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
                         }
                       %>
                       <small class="ride-meta">Driver: <%= ride.getDriverName() != null ? ride.getDriverName() : "Not assigned" %></small>
+                      <% if (ride.getDriverGender() != null && !ride.getDriverGender().isBlank()) { %>
+                        <small class="ride-meta">Driver gender: <%= ride.getDriverGender() %></small>
+                      <% } %>
                       <small class="ride-meta">Vehicle: <%= ride.getVehicleInfo() != null ? ride.getVehicleInfo() : "Not assigned" %></small>
                       <small class="ride-meta">Departure: <%= formattedDeparture %></small>
                       <% if (!formattedTime.isBlank()) { %>

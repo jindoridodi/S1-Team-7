@@ -32,7 +32,8 @@ public final class RideRepository {
             String sql =
                     "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
                     "       CONCAT(u.First_Name, ' ', LEFT(u.Last_Name, 1), '.') AS Driver_Name, " +
-                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info, " +
+                    "       u.Gender AS Driver_Gender " +
                     "FROM Rides r " +
                     "LEFT JOIN Users u ON u.User_ID = r.Driver_ID " +
                     "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
@@ -55,7 +56,8 @@ public final class RideRepository {
                             rs.getInt("Seats_Left"),
                             rs.getString("Status"),
                             rs.getString("Driver_Name"),
-                            rs.getString("Vehicle_Info")
+                            rs.getString("Vehicle_Info"),
+                            rs.getString("Driver_Gender")
                     ));
                 }
             }
@@ -91,7 +93,7 @@ public final class RideRepository {
                                 rs.getString("Departure_Date"),
                                 rs.getInt("Seats_Left"),
                                 rs.getString("Status"),
-                                null, null
+                                null, null, null
                         ));
                     }
                 }

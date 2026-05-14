@@ -67,6 +67,9 @@ if (rideHistory == null) {
                       <small class="ride-meta">Booking ID: #<%= ride.getBookingId() %></small>
                       <small class="ride-meta">Status: <%= ride.getBookingStatus() %></small>
                       <small class="ride-meta">Driver: <%= ride.getDriverName() != null ? ride.getDriverName() : "Not assigned" %></small>
+                      <% if (ride.getDriverGender() != null && !ride.getDriverGender().isBlank()) { %>
+                        <small class="ride-meta">Driver gender: <%= ride.getDriverGender() %></small>
+                      <% } %>
                       <small class="ride-meta">Vehicle: <%= ride.getVehicleInfo() != null ? ride.getVehicleInfo() : "Not assigned" %></small>
                       <small class="ride-meta">Departure: <%= formattedDeparture %></small>
                       <% if (!formattedTime.isBlank()) { %>
