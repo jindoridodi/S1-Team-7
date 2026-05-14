@@ -105,6 +105,86 @@ public final class RideRepository {
     }
 
     /**
+     * Rides the driver can still manage: not yet completed/cancelled and departure still in the future
+     * (after {@link RideStatusStore#refreshRideStatuses}).
+     */
+    public static List<Ride> getActiveRidesForDriver(String driverEmail) {
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            String sql =
+                    "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status " +
+                    "FROM Rides r " +
+                    "JOIN Users u ON u.User_ID = r.Driver_ID " +
+                    "WHERE u.Email = ? AND u.Account_Status = 'active' " +
+                    "  AND r.Status NOT IN ('completed', 'cancelled') " +
+                    "  AND r.Departure_Date >= NOW() " +
+                    "ORDER BY r.Departure_Date ASC";
+
+            List<Ride> list = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, driverEmail);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new Ride(
+                                String.valueOf(rs.getInt("Ride_ID")),
+                                rs.getString("Origin"),
+                                rs.getString("Destination"),
+                                rs.getString("Departure_Date"),
+                                rs.getInt("Seats_Left"),
+                                rs.getString("Status"),
+                                null, null, null
+                        ));
+                    }
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("getActiveRidesForDriver failed", e);
+        }
+    }
+
+    /**
+     * Past rides for the driver: completed, cancelled, or departure time in the past.
+     */
+    public static List<Ride> getRideHistoryForDriver(String driverEmail) {
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            String sql =
+                    "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                    "FROM Rides r " +
+                    "JOIN Users u ON u.User_ID = r.Driver_ID " +
+                    "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
+                    "WHERE u.Email = ? AND u.Account_Status = 'active' " +
+                    "  AND (r.Status IN ('completed', 'cancelled') OR r.Departure_Date < NOW()) " +
+                    "ORDER BY r.Departure_Date DESC";
+
+            List<Ride> list = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, driverEmail);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new Ride(
+                                String.valueOf(rs.getInt("Ride_ID")),
+                                rs.getString("Origin"),
+                                rs.getString("Destination"),
+                                rs.getString("Departure_Date"),
+                                rs.getInt("Seats_Left"),
+                                rs.getString("Status"),
+                                null,
+                                rs.getString("Vehicle_Info"),
+                                null
+                        ));
+                    }
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("getRideHistoryForDriver failed", e);
+        }
+    }
+
+    /**
      * Creates a new ride offer owned by the authenticated driver.
      *
      * @param driverEmail authenticated driver email

@@ -92,13 +92,16 @@ if (driverVehicles == null) {
               <a href="<%= cp %>/dashboard/driver?action=showVehicles" class="login-submit action-requests u-inline-flex-center">
                 My Vehicles
               </a>
+              <a href="<%= cp %>/dashboard/driver?action=showRideHistory" class="login-submit action-bookings u-inline-flex-center">
+                Ride History
+              </a>
             </div>
           </section>
 
           <section class="dashboard-section dashboard-vehicle-card">
             <div class="dashboard-section-heading">
               <h3>My Rides</h3>
-              <p>All rides you have created. Cancel a ride to remove all passengers and notify them.</p>
+              <p>Upcoming rides you are hosting. Cancel a ride to remove all passengers and notify them. Past trips are in Ride History.</p>
             </div>
 
             <%
@@ -108,7 +111,7 @@ if (driverVehicles == null) {
 
             <% if (driverRides.isEmpty()) { %>
               <div class="dashboard-empty">
-                <p>You haven't created any rides yet.</p>
+                <p>No upcoming rides. Create one or check Ride History for past trips.</p>
               </div>
             <% } else { %>
               <div class="ride-list">

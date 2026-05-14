@@ -74,9 +74,15 @@ public class DriverDashboard extends HttpServlet {
             return;
         }
 
+        if ("showRideHistory".equals(action)) {
+            req.setAttribute("driverRideHistory", RideRepository.getRideHistoryForDriver(user.getEmail()));
+            req.getRequestDispatcher("/WEB-INF/views/driver-ride-history.jsp").forward(req, resp);
+            return;
+        }
+
         req.setAttribute("driverVehicles", VehicleRepository.getVehiclesForOwner(user.getEmail()));
         req.setAttribute("passengerRequests", BookingRepository.getPassengerRequestsForDriver(user.getEmail()));
-        req.setAttribute("driverRides", RideRepository.getRidesForDriver(user.getEmail()));
+        req.setAttribute("driverRides", RideRepository.getActiveRidesForDriver(user.getEmail()));
         req.getRequestDispatcher("/WEB-INF/views/driver-dashboard.jsp").forward(req, resp);
     }
 
