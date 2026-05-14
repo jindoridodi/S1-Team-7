@@ -3,7 +3,6 @@
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
-boolean canSwapDashboard = currentUser != null && currentUser.hasRole("driver") && currentUser.hasRole("passenger");
 java.util.List<model.UpcomingRide> upcomingRides = (java.util.List<model.UpcomingRide>) request.getAttribute("upcomingRides");
 if (upcomingRides == null) {
   upcomingRides = java.util.Collections.emptyList();
@@ -35,9 +34,6 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
       <div class="nav-links dashboard-nav-links">
         <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Passenger" %></span>
         <a href="<%= cp %>/settings" class="nav-btn-primary dashboard-settings">Settings</a>
-        <% if (canSwapDashboard) { %>
-          <a href="<%= cp %>/dashboard/driver" class="nav-btn-secondary">Switch to Driver</a>
-        <% } %>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
           <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
         </form>

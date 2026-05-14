@@ -3,7 +3,6 @@
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
-boolean canSwapDashboard = currentUser != null && currentUser.hasRole("driver") && currentUser.hasRole("passenger");
 java.util.List<String[]> savedRoutes = (java.util.List<String[]>) request.getAttribute("savedRoutes");
 if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
 %>

@@ -6,7 +6,6 @@
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
 List<Vehicle> vehicles = (List<Vehicle>) request.getAttribute("vehicles");
-boolean canSwapDashboard = currentUser != null && currentUser.hasRole("driver") && currentUser.hasRole("passenger");
 if (vehicles == null) {
   vehicles = java.util.Collections.emptyList();
 }
