@@ -450,10 +450,14 @@ public final class BookingRepository {
      * @param driverEmail authenticated driver email
      * @param bookingId booking identifier for the request
      * @param newStatus requested status (must be accepted)
+     * @param vehicleId vehicle to use when accepting; required for accept
      * @return true if the booking row is updated
      */
-    public static boolean updatePassengerRequestStatus(String driverEmail, String bookingId, String newStatus) {
+    public static boolean updatePassengerRequestStatus(String driverEmail, String bookingId, String newStatus, String vehicleId) {
         if (!"accepted".equalsIgnoreCase(newStatus)) {
+            return false;
+        }
+        if (vehicleId == null || vehicleId.isBlank()) {
             return false;
         }
 
@@ -509,15 +513,18 @@ public final class BookingRepository {
                 }
             }
 
-            int vehicleId;
+            int vehicleIdInt;
             int totalSeats;
             try (PreparedStatement ps = c.prepareStatement(
-                    /* Picks the driver's first active vehicle to fulfill the request (simple default selection). */
-                    "SELECT Vehicle_ID, Total_Seats FROM Vehicles WHERE Driver_ID = ? AND Vehicle_Status = 'active' ORDER BY Vehicle_ID ASC LIMIT 1")) {
-                ps.setInt(1, driverId);
+                    "SELECT v.Vehicle_ID, v.Total_Seats FROM Vehicles v " +
+                    "JOIN Users u ON u.User_ID = v.Driver_ID " +
+                    "WHERE v.Vehicle_ID = ? AND v.Driver_ID = (SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active' LIMIT 1) " +
+                    "AND v.Vehicle_Status = 'active' LIMIT 1")) {
+                ps.setInt(1, Integer.parseInt(vehicleId));
+                ps.setString(2, driverEmail);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) { c.rollback(); return false; }
-                    vehicleId = rs.getInt("Vehicle_ID");
+                    vehicleIdInt = rs.getInt("Vehicle_ID");
                     totalSeats = rs.getInt("Total_Seats");
                 }
             }
@@ -539,7 +546,7 @@ public final class BookingRepository {
                     "INSERT INTO Rides (Driver_ID, Vehicle_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
                 ps.setInt(1, driverId);
-                ps.setInt(2, vehicleId);
+                ps.setInt(2, vehicleIdInt);
                 ps.setString(3, origin);
                 ps.setString(4, destination);
                 ps.setTimestamp(5, departureDate);

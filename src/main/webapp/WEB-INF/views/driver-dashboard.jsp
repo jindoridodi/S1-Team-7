@@ -4,6 +4,7 @@
 <%@ page import="java.time.format.DateTimeFormatter" %>
 <%@ page import="model.PassengerRequest" %>
 <%@ page import="model.User" %>
+<%@ page import="model.Vehicle" %>
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
@@ -12,6 +13,11 @@ boolean canSwapDashboard = currentUser != null && currentUser.hasRole("driver") 
 List<PassengerRequest> passengerRequests = (List<PassengerRequest>) request.getAttribute("passengerRequests");
 if (passengerRequests == null) {
   passengerRequests = java.util.Collections.emptyList();
+}
+@SuppressWarnings("unchecked")
+List<Vehicle> driverVehicles = (List<Vehicle>) request.getAttribute("driverVehicles");
+if (driverVehicles == null) {
+  driverVehicles = java.util.Collections.emptyList();
 }
 %>
 <!DOCTYPE html>
@@ -198,13 +204,27 @@ if (passengerRequests == null) {
                         <small class="ride-meta">Status: <%= requestRow.getBookingStatus() %></small>
                       </div>
                       <% if ("pending".equalsIgnoreCase(requestRow.getBookingStatus())) { %>
-                        <div class="ride-actions request-actions">
-                          <form method="post" action="<%= cp %>/dashboard/driver" class="dashboard-inline-form">
-                            <input type="hidden" name="action" value="processPassengerRequest" />
-                            <input type="hidden" name="bookingId" value="<%= requestRow.getBookingId() %>" />
-                            <input type="hidden" name="decision" value="accept" />
-                            <button type="submit" class="request-approve">Accept Request</button>
-                          </form>
+                        <div class="ride-actions request-actions request-accept-stack">
+                          <% if (driverVehicles.isEmpty()) { %>
+                            <p class="ride-meta ride-meta--warn">Add a vehicle under My Vehicles to accept this request.</p>
+                          <% } else { %>
+                            <form method="post" action="<%= cp %>/dashboard/driver" class="dashboard-inline-form request-accept-form">
+                              <input type="hidden" name="action" value="processPassengerRequest" />
+                              <input type="hidden" name="bookingId" value="<%= requestRow.getBookingId() %>" />
+                              <input type="hidden" name="decision" value="accept" />
+                              <label class="request-vehicle-label">
+                                <span class="request-vehicle-label-text">Vehicle for this ride</span>
+                                <select name="vehicleId" class="login-input request-vehicle-select" required>
+                                  <% for (Vehicle v : driverVehicles) { %>
+                                    <option value="<%= v.getId() %>">
+                                      <%= v.getColor() %> <%= v.getMake() %> <%= v.getModel() %> — plate <%= v.getPlate() %> (<%= v.getTotalSeats() %> seats)
+                                    </option>
+                                  <% } %>
+                                </select>
+                              </label>
+                              <button type="submit" class="request-approve">Accept Request</button>
+                            </form>
+                          <% } %>
                         </div>
                       <% } %>
                     </div>

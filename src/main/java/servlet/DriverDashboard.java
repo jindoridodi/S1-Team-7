@@ -52,7 +52,7 @@ public class DriverDashboard extends HttpServlet {
         String error = safe(req.getParameter("error"));
         if ("requestNotProcessed".equals(error)) {
             req.setAttribute("error",
-                "Could not process that passenger request (it may have been accepted already, or you have no vehicle/seats available).");
+                "Could not accept that request. Pick a vehicle with enough seats, or it may have been accepted already.");
         }
 
         String action = safe(req.getParameter("action"));
@@ -74,6 +74,7 @@ public class DriverDashboard extends HttpServlet {
             return;
         }
 
+        req.setAttribute("driverVehicles", VehicleRepository.getVehiclesForOwner(user.getEmail()));
         req.setAttribute("passengerRequests", BookingRepository.getPassengerRequestsForDriver(user.getEmail()));
         req.setAttribute("driverRides", RideRepository.getRidesForDriver(user.getEmail()));
         req.getRequestDispatcher("/WEB-INF/views/driver-dashboard.jsp").forward(req, resp);
@@ -178,6 +179,7 @@ public class DriverDashboard extends HttpServlet {
         if ("processPassengerRequest".equals(action)) {
             String bookingId = safe(req.getParameter("bookingId"));
             String decision = safe(req.getParameter("decision"));
+            String vehicleId = safe(req.getParameter("vehicleId"));
 
             if (!bookingId.isBlank()) {
                 String nextStatus = "";
@@ -186,7 +188,7 @@ public class DriverDashboard extends HttpServlet {
                 }
 
                 if (!nextStatus.isBlank()) {
-                    boolean ok = BookingRepository.updatePassengerRequestStatus(user.getEmail(), bookingId, nextStatus);
+                    boolean ok = BookingRepository.updatePassengerRequestStatus(user.getEmail(), bookingId, nextStatus, vehicleId);
                     if (!ok) {
                         resp.sendRedirect(req.getContextPath() + "/dashboard/driver?error=requestNotProcessed");
                         return;
