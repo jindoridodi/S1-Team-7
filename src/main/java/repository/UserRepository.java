@@ -21,6 +21,19 @@ public final class UserRepository {
     private UserRepository() {}
 
     /**
+     * Maps gender values from the signup UI to values that fit {@code Users.Gender} VARCHAR(10).
+     */
+    private static String genderValueForColumn(String uiGender) {
+        if (uiGender == null) {
+            return null;
+        }
+        if ("prefer-not-to-say".equals(uiGender)) {
+            return "not-stated";
+        }
+        return uiGender;
+    }
+
+    /**
      * Checks whether an active user account exists for the given email.
      *
      * @param email user email
@@ -49,7 +62,7 @@ public final class UserRepository {
      * @param lastName last name
      * @param email email address (used as login key)
      * @param sjsuId campus identifier
-     * @param gender user gender string as provided by UI
+     * @param gender user gender string as provided by UI (normalized to fit VARCHAR(10) before insert)
      * @param password plaintext password (validated and hashed)
      * @param roles set containing driver and/or passenger
      * @param licenseNumber required when creating a driver role
@@ -68,6 +81,8 @@ public final class UserRepository {
         if (hasUser(email)) return null;
         if (!PasswordUtil.isStrongPassword(password)) throw new IllegalArgumentException("password does not meet policy");
 
+        String genderStored = genderValueForColumn(gender);
+
         /* Creates the base user record as an active account (roles are inserted separately below). */
         String insertUser =
                 "INSERT INTO Users (SJSU_ID, First_Name, Last_Name, Email, Gender, " +
@@ -83,7 +98,7 @@ public final class UserRepository {
                 ps.setString(2, firstName);
                 ps.setString(3, lastName);
                 ps.setString(4, email);
-                ps.setString(5, gender);
+                ps.setString(5, genderStored);
                 ps.setString(6, passwordHash);
                 ps.executeUpdate();
 
@@ -113,7 +128,7 @@ public final class UserRepository {
 
             LogRepository.logUser("ACCOUNT_CREATED", userId, "New account: " + email);
 
-            return new User(firstName, lastName, email, sjsuId, gender, passwordHash, roles);
+            return new User(firstName, lastName, email, sjsuId, genderStored, passwordHash, roles);
 
         } catch (SQLException e) {
             throw new RuntimeException("createUser failed", e);
