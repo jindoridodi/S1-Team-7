@@ -13,7 +13,7 @@ String dashboardPath = dashboardAttr instanceof String ? (String) dashboardAttr 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UniRide</title>
   <link rel="stylesheet" href="<%= cp %>/assets/css/common.css?v=20260427" />
-  <link rel="stylesheet" href="<%= cp %>/assets/css/home.css?v=20260427" />
+  <link rel="stylesheet" href="<%= cp %>/assets/css/home.css?v=20260515" />
 </head>
 <body>
   <div class="home-container">
@@ -45,9 +45,12 @@ String dashboardPath = dashboardAttr instanceof String ? (String) dashboardAttr 
         </div>
 
         <% if (currentUser == null) { %>
-          <div class="search-card home-login-card">
-            <h4 class="card-label">Log In</h4>
-            <p class="home-login-lead">Sign in with your @sjsu.edu account to search rides and manage your trips.</p>
+          <div class="search-card home-login-card home-auth-card">
+            <header class="home-auth-card-header">
+              <span class="home-auth-eyebrow">UniRide account</span>
+              <h4 class="home-auth-title">Log in</h4>
+              <p class="home-login-lead">Sign in with your @sjsu.edu account to search rides and manage your trips.</p>
+            </header>
             <form class="home-login-form" method="post" action="<%= cp %>/login" novalidate>
               <div class="input-group">
                 <label for="home-email">Email (@sjsu.edu only)</label>
@@ -57,15 +60,20 @@ String dashboardPath = dashboardAttr instanceof String ? (String) dashboardAttr 
                 <label for="home-password">Password</label>
                 <input id="home-password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
               </div>
-              <button class="search-submit" type="submit">Log in &rarr;</button>
+              <button class="home-auth-submit" type="submit">Log in</button>
             </form>
+            <a class="home-auth-admin-btn" href="<%= cp %>/admin">Login as Admin</a>
             <p class="home-login-signup">New to UniRide? <a href="<%= cp %>/signup">Create an account</a></p>
           </div>
         <% } else { %>
-          <div class="search-card home-login-card">
-            <h4 class="card-label">Welcome back</h4>
-            <p class="home-login-lead">You are signed in as <%= currentUser.getFirstName() %>.</p>
-            <a class="search-submit home-login-dashboard" href="<%= dashboardPath %>">Go to Dashboard &rarr;</a>
+          <div class="search-card home-login-card home-auth-card">
+            <header class="home-auth-card-header">
+              <span class="home-auth-eyebrow">You&rsquo;re in</span>
+              <h4 class="home-auth-title">Welcome back</h4>
+              <p class="home-login-lead">You are signed in as <%= currentUser.getFirstName() %>.</p>
+            </header>
+            <a class="home-auth-submit home-login-dashboard" href="<%= dashboardPath %>">Go to Dashboard</a>
+            <a class="home-auth-admin-btn home-auth-admin-btn--outline" href="<%= cp %>/admin">Login as Admin</a>
           </div>
         <% } %>
       </div>
