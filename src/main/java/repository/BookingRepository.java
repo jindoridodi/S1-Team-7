@@ -469,17 +469,19 @@ public final class BookingRepository {
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
+            try {
             RideStatusStore.refreshRideStatuses(c);
 
             // Lock the booking request row.
             /* Locks the booking request to prevent multiple drivers acting on it. */
             String bookingSelect =
-                    "SELECT b.Status AS Booking_Status, b.Ride_ID, b.Origin, b.Destination, b.Departure_Date, b.Seats_Requested " +
+                    "SELECT b.Status AS Booking_Status, b.Ride_ID, b.User_ID, b.Origin, b.Destination, b.Departure_Date, b.Seats_Requested " +
                     "FROM Bookings b " +
                     "WHERE b.Booking_ID = ? FOR UPDATE";
 
             String bookingStatus;
             Integer existingRideId;
+            int passengerUserId;
             String origin;
             String destination;
             Timestamp departureDate;
@@ -494,6 +496,7 @@ public final class BookingRepository {
                     }
                     bookingStatus = rs.getString("Booking_Status");
                     existingRideId = rs.getObject("Ride_ID", Integer.class);
+                    passengerUserId = rs.getInt("User_ID");
                     origin = rs.getString("Origin");
                     destination = rs.getString("Destination");
                     departureDate = rs.getTimestamp("Departure_Date");
@@ -509,13 +512,15 @@ public final class BookingRepository {
 
             // accepted: choose driver's first vehicle and create a Ride to fulfill this request.
             int driverId;
+            String driverFirstName;
             try (PreparedStatement ps = c.prepareStatement(
                     /* Resolves the acting driver from the authenticated email (active accounts only). */
-                    "SELECT User_ID FROM Users WHERE Email = ? AND Account_Status = 'active' LIMIT 1")) {
+                    "SELECT User_ID, First_Name FROM Users WHERE Email = ? AND Account_Status = 'active' LIMIT 1")) {
                 ps.setString(1, driverEmail);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) { c.rollback(); return false; }
                     driverId = rs.getInt("User_ID");
+                    driverFirstName = rs.getString("First_Name");
                 }
             }
 
@@ -565,14 +570,32 @@ public final class BookingRepository {
                 }
             }
 
+            boolean updated;
             try (PreparedStatement ps = c.prepareStatement(
                     /* Links the booking to the newly created ride and marks it accepted in one update. */
                     "UPDATE Bookings SET Ride_ID = ?, Status = 'accepted' WHERE Booking_ID = ?")) {
                 ps.setInt(1, rideId);
                 ps.setInt(2, Integer.parseInt(bookingId));
-                boolean updated = ps.executeUpdate() > 0;
-                c.commit();
-                return updated;
+                updated = ps.executeUpdate() > 0;
+            }
+
+            if (updated) {
+                String driverName = driverFirstName != null && !driverFirstName.isBlank()
+                        ? driverFirstName
+                        : "A driver";
+                String from = origin != null && !origin.isBlank() ? origin : "your pickup";
+                String to = destination != null && !destination.isBlank() ? destination : "your destination";
+                String message = driverName + " accepted your ride request from " + from + " to " + to + ".";
+                NotificationRepository.insertNotification(c, passengerUserId, message);
+            }
+
+            c.commit();
+            return updated;
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(true);
             }
         } catch (SQLException e) {
             throw new RuntimeException("updatePassengerRequestStatus failed", e);
