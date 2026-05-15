@@ -362,6 +362,25 @@
   width: 100%;
 }
 
+a.ride-request-link {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+a.ride-request-link:hover {
+  text-decoration: none;
+  color: #9af3cf;
+}
+
+.dashboard-search-form {
+  display: grid;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
 .request-approve,
 .request-decline {
   width: 100%;

@@ -118,10 +118,15 @@ if (currentUser != null) {
       var origin      = document.getElementById('search-origin').value.trim();
       var destination = document.getElementById('search-destination').value.trim();
       var date        = document.getElementById('search-date').value;
-      var url = '<%= cp %>/dashboard/passenger?searchOrigin=' + encodeURIComponent(origin)
+      var url = '<%= cp %>/dashboard/passenger?action=searchRides'
+              + '&searchOrigin=' + encodeURIComponent(origin)
               + '&searchDestination=' + encodeURIComponent(destination)
               + '&searchDate=' + encodeURIComponent(date);
+      <% if (currentUser == null) { %>
+      window.location.href = '<%= cp %>/login?redirect=' + encodeURIComponent(url);
+      <% } else { %>
       window.location.href = url;
+      <% } %>
     }
   </script>
 </body>

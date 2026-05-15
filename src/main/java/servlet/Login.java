@@ -50,10 +50,19 @@ public class Login extends HttpServlet {
 
         // Persist the authenticated user in session for downstream guards.
         req.getSession(true).setAttribute("currentUser", user);
+
+        String redirect = safe(req.getParameter("redirect"));
+        if (!redirect.isBlank() && redirect.startsWith(req.getContextPath())) {
+            resp.sendRedirect(redirect);
+            return;
+        }
+
         if (user.hasRole("driver")) {
             resp.sendRedirect(req.getContextPath() + "/dashboard/driver");
-        } else {
+        } else if (user.hasRole("passenger")) {
             resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
+        } else {
+            resp.sendRedirect(req.getContextPath() + "/home");
         }
     }
 
