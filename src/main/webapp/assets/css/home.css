@@ -445,21 +445,6 @@
   line-height: 1.6;
 }
 
-.home-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-4xl) 10%;
-  border-top: 1px solid var(--border-color);
-  color: var(--text-dim);
-  font-size: var(--font-size-sm);
-}
-
-.footer-links {
-  display: flex;
-  gap: var(--spacing-2xl);
-}
-
 @media (max-width: 900px) {
   .hero-wrapper {
     flex-direction: column;
@@ -477,11 +462,6 @@
 
   .features-grid {
     grid-template-columns: 1fr;
-  }
-
-  .home-footer {
-    flex-direction: column;
-    gap: var(--spacing-md);
   }
 
   .features-section {

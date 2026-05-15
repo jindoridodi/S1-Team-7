@@ -111,14 +111,6 @@ String dashboardPath = dashboardAttr instanceof String ? (String) dashboardAttr 
       </div>
     </section>
 
-    <footer class="home-footer">
-      <p>Copyright 2026 UniRide | Built for Spartans</p>
-      <div class="footer-links">
-        <span>Privacy</span>
-        <span>Terms</span>
-        <span>Contact</span>
-      </div>
-    </footer>
   </div>
 </body>
 </html>
