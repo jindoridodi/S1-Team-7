@@ -25,7 +25,7 @@ String msg = (String) request.getAttribute("msg");
   <link rel="stylesheet" href="<%= cp %>/assets/css/common.css?v=20260427" />
   <link rel="stylesheet" href="<%= cp %>/assets/css/home.css?v=20260427" />
   <link rel="stylesheet" href="<%= cp %>/assets/css/login.css?v=20260427" />
-  <link rel="stylesheet" href="<%= cp %>/assets/css/dashboard.css?v=20260427" />
+  <link rel="stylesheet" href="<%= cp %>/assets/css/dashboard.css?v=20260515" />
   <style>
     .ride-item--highlight {
       border-left: 3px solid #f5a623;
@@ -59,14 +59,14 @@ String msg = (String) request.getAttribute("msg");
         <section class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
             <h3>Search rides</h3>
-            <p>Find open trips posted by drivers. Searching only shows results — you choose when to request a seat.</p>
+            <p>Find open trips posted by drivers. Use partial place names (e.g. <em>SJSU</em>, <em>Diridon</em>), any word order, or filter by departure date — exact spelling of the full address is not required.</p>
           </div>
 
           <form method="get" action="<%= cp %>/dashboard/passenger" class="dashboard-form-grid dashboard-search-form">
             <input type="hidden" name="action" value="searchRides" />
-            <input type="text" name="searchOrigin" class="login-input" placeholder="From (origin)" value="<%= searchOrigin %>" />
-            <input type="text" name="searchDestination" class="login-input" placeholder="To (destination)" value="<%= searchDestination %>" />
-            <input type="date" name="searchDate" class="login-input" value="<%= searchDate %>" />
+            <input type="text" name="searchOrigin" class="login-input" placeholder="From (origin) — keywords OK" value="<%= searchOrigin %>" />
+            <input type="text" name="searchDestination" class="login-input" placeholder="To (destination) — keywords OK" value="<%= searchDestination %>" />
+            <input type="date" name="searchDate" class="login-input" title="Filter rides departing on this calendar date" value="<%= searchDate %>" />
             <button type="submit" class="login-submit action-find u-w-100">Search rides</button>
           </form>
         </section>

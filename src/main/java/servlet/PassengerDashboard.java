@@ -1,9 +1,14 @@
 package servlet;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import javax.servlet.ServletException;
@@ -214,26 +219,33 @@ public class PassengerDashboard extends HttpServlet {
     }
 
     private static List<Ride> filterRides(List<Ride> rides, String originFilter, String destinationFilter, String dateFilter) {
-        String origin = originFilter.toLowerCase();
-        String destination = destinationFilter.toLowerCase();
         List<Ride> filtered = new ArrayList<>();
 
         for (Ride ride : rides) {
             boolean matches = true;
 
-            if (!origin.isBlank() &&
-                (ride.getOrigin() == null || !ride.getOrigin().toLowerCase().contains(origin))) {
-                matches = false;
+            if (!originFilter.isBlank()) {
+                boolean ok = locationMatches(ride.getOrigin(), originFilter);
+                if (!ok && destinationFilter.isBlank()) {
+                    ok = locationMatches(ride.getDestination(), originFilter);
+                }
+                if (!ok) {
+                    matches = false;
+                }
             }
 
-            if (!destination.isBlank() &&
-                (ride.getDestination() == null || !ride.getDestination().toLowerCase().contains(destination))) {
-                matches = false;
+            if (matches && !destinationFilter.isBlank()) {
+                boolean ok = locationMatches(ride.getDestination(), destinationFilter);
+                if (!ok && originFilter.isBlank()) {
+                    ok = locationMatches(ride.getOrigin(), destinationFilter);
+                }
+                if (!ok) {
+                    matches = false;
+                }
             }
 
             if (matches && !dateFilter.isBlank()) {
-                String dep = ride.getDepartureDate() == null ? "" : ride.getDepartureDate();
-                if (!dep.startsWith(dateFilter)) {
+                if (!departureMatchesDateFilter(ride.getDepartureDate(), dateFilter)) {
                     matches = false;
                 }
             }
@@ -243,6 +255,87 @@ public class PassengerDashboard extends HttpServlet {
             }
         }
         return filtered;
+    }
+
+    /**
+     * Lenient location match: punctuation-insensitive, extra spaces collapsed, and every word in the query
+     * must appear as a substring (so word order can differ). If only one of origin/destination is filled in,
+     * the query may match either ride endpoint so swapped fields still work.
+     */
+    private static boolean locationMatches(String rideLocation, String filterRaw) {
+        if (filterRaw == null || filterRaw.isBlank()) {
+            return true;
+        }
+        if (rideLocation == null || rideLocation.isBlank()) {
+            return false;
+        }
+        String normRide = normalizeForSearch(rideLocation);
+        String normFilter = normalizeForSearch(filterRaw);
+        if (normFilter.isEmpty()) {
+            return true;
+        }
+        if (normRide.contains(normFilter)) {
+            return true;
+        }
+        for (String token : normFilter.split("\\s+")) {
+            if (token.isEmpty()) {
+                continue;
+            }
+            if (!normRide.contains(token)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String normalizeForSearch(String s) {
+        return s.toLowerCase(Locale.ROOT)
+                .trim()
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private static boolean departureMatchesDateFilter(String departureSql, String dateFilter) {
+        if (dateFilter == null || dateFilter.isBlank()) {
+            return true;
+        }
+        LocalDate filterDate;
+        try {
+            filterDate = LocalDate.parse(dateFilter.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+        LocalDate rideDate = departureToLocalDate(departureSql);
+        return rideDate != null && rideDate.equals(filterDate);
+    }
+
+    /** Parses typical MySQL datetime / date strings to the calendar day of departure. */
+    private static LocalDate departureToLocalDate(String departureSql) {
+        if (departureSql == null || departureSql.isBlank()) {
+            return null;
+        }
+        String t = departureSql.trim();
+        if (t.length() >= 10 && t.charAt(4) == '-' && t.charAt(7) == '-') {
+            try {
+                return LocalDate.parse(t.substring(0, 10), DateTimeFormatter.ISO_LOCAL_DATE);
+            } catch (DateTimeParseException ignored) {
+                // fall through
+            }
+        }
+        DateTimeFormatter[] patterns = {
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
+        };
+        for (DateTimeFormatter pattern : patterns) {
+            try {
+                return LocalDateTime.parse(t, pattern).toLocalDate();
+            } catch (DateTimeParseException ignored) {
+                // try next
+            }
+        }
+        return null;
     }
 
     private static boolean hasSearchParams(HttpServletRequest req) {
