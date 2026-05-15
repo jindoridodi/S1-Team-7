@@ -37,8 +37,15 @@ if (rideHistory == null) {
         <section class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
             <h3>Ride History</h3>
-            <p>Your past bookings (cancelled, declined, or completed).</p>
+            <p>Your past bookings (cancelled, declined, or completed). Leave a note on completed trips.</p>
           </div>
+
+          <% if (request.getAttribute("successMessage") != null) { %>
+            <p class="signup-success"><%= request.getAttribute("successMessage") %></p>
+          <% } %>
+          <% if (request.getAttribute("error") != null) { %>
+            <p style="color:red; text-align:center;"><%= request.getAttribute("error") %></p>
+          <% } %>
 
           <% if (rideHistory.isEmpty()) { %>
             <div class="dashboard-empty">
@@ -77,6 +84,13 @@ if (rideHistory == null) {
                       <% } %>
                     </div>
                   </div>
+                  <% if (ride.isReviewable()) {
+                       request.setAttribute("_reviewRideId", ride.getRideId());
+                       request.setAttribute("_reviewIsDriver", Boolean.FALSE);
+                       request.setAttribute("_reviewFormAction", cp + "/dashboard/passenger");
+                  %>
+                    <jsp:include page="/WEB-INF/views/ride-reviews-section.jsp" />
+                  <% } %>
                 </div>
               <% } %>
             </div>
