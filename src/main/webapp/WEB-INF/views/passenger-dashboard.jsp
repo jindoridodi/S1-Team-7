@@ -47,14 +47,39 @@ String errorMessage = (String) request.getAttribute("error");
           java.util.List<String[]> notifications = (java.util.List<String[]>) request.getAttribute("notifications");
           if (notifications == null) notifications = java.util.Collections.emptyList();
           long unreadCount = notifications.stream().filter(n -> "unread".equals(n[3])).count();
+          boolean hasFlashMessage = successMessage != null || errorMessage != null;
+          boolean showNotificationsSection = !notifications.isEmpty() || hasFlashMessage;
+          if (hasFlashMessage) {
+            unreadCount += (successMessage != null ? 1 : 0) + (errorMessage != null ? 1 : 0);
+          }
         %>
 
-        <% if (!notifications.isEmpty()) { %>
+        <% if (showNotificationsSection) { %>
           <section class="dashboard-section dashboard-passenger-section">
             <div class="dashboard-section-heading">
               <h3>Notifications <% if (unreadCount > 0) { %><span class="notif-badge"><%= unreadCount %></span><% } %></h3>
             </div>
             <div class="ride-list">
+              <% if (successMessage != null) { %>
+                <div class="ride-item notif-unread">
+                  <div class="ride-row">
+                    <div class="ride-info">
+                      <small class="ride-meta"><%= successMessage %></small>
+                      <small class="ride-meta">Just now</small>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+              <% if (errorMessage != null) { %>
+                <div class="ride-item notif-error">
+                  <div class="ride-row">
+                    <div class="ride-info">
+                      <small class="ride-meta"><%= errorMessage %></small>
+                      <small class="ride-meta">Just now</small>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
               <% for (String[] notif : notifications) {
                    boolean isUnread = "unread".equals(notif[3]);
               %>
@@ -80,13 +105,6 @@ String errorMessage = (String) request.getAttribute("error");
 
 
 
-        <% if (successMessage != null) { %>
-          <p class="signup-success"><%= successMessage %></p>
-        <% } %>
-        <% if (errorMessage != null) { %>
-          <p style="color:#f87171;text-align:center;margin-top:10px;"><%= errorMessage %></p>
-        <% } %>
-
         <section class="dashboard-hero dashboard-section">
           <div class="dashboard-hero-copy">
             <span class="campus-tag">Passenger Hub</span>
@@ -99,7 +117,7 @@ String errorMessage = (String) request.getAttribute("error");
 
                     <div class="dashboard-actions">
             <a class="login-submit action-find u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=searchRides">Search rides</a>
-            <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showRequestRideForm">Post open request</a>
+            <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showRequestRideForm">Request a Ride</a>
             <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showRideHistory">Ride History</a>
             <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showSavedRoutes">My Saved Routes</a>
           </div>

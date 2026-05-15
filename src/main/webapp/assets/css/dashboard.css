@@ -252,6 +252,31 @@
   box-shadow: 0 20px 46px rgba(0, 0, 0, 0.28);
 }
 
+.notif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0.1rem 0.45rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  background: rgba(229, 168, 35, 0.25);
+  color: var(--sjsu-gold);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  vertical-align: middle;
+}
+
+.notif-unread {
+  border-left: 3px solid var(--sjsu-gold);
+  background: rgba(229, 168, 35, 0.08);
+}
+
+.notif-error {
+  border-left: 3px solid #f87171;
+  background: rgba(248, 113, 113, 0.08);
+}
+
 .ride-row {
   display: flex;
   flex-direction: column;
