@@ -55,8 +55,8 @@ if (currentUser != null) {
             <p class="home-login-lead">Sign in with your @sjsu.edu account to search rides and manage your trips.</p>
             <form class="home-login-form" method="post" action="<%= cp %>/login" novalidate>
               <div class="input-group">
-                <label for="home-email">Email</label>
-                <input id="home-email" name="email" type="email" placeholder="you@sjsu.edu" autocomplete="email" required />
+                <label for="home-email">Email (@sjsu.edu only)</label>
+                <input id="home-email" name="email" type="email" placeholder="you@sjsu.edu" title="Use your San José State University email (you@sjsu.edu)" pattern="[^@\s]+@sjsu\.edu" autocomplete="email" required />
               </div>
               <div class="input-group">
                 <label for="home-password">Password</label>
