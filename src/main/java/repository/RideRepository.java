@@ -248,7 +248,7 @@ public final class RideRepository {
                     "INSERT INTO Rides (Driver_ID, Vehicle_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
                     "SELECT d.User_ID, v.Vehicle_ID, ?, ?, ?, ?, 'open' " +
                     "FROM Users u " +
-                    "JOIN Drivers d ON d.User_ID = u.User_ID " +
+                    "JOIN Drivers d ON d.User_ID = u.User_ID AND d.Verification_Status = 'verified' " +
                     "JOIN Vehicles v ON v.Vehicle_ID = ? AND v.Driver_ID = d.User_ID AND v.Vehicle_Status = 'active' " +
                     "WHERE u.Email = ? AND u.Account_Status = 'active'";
 
@@ -376,6 +376,102 @@ public final class RideRepository {
             }
         } catch (SQLException e) {
             throw new RuntimeException("cancelRide failed", e);
+        }
+    }
+
+    /**
+     * Admin cancellation: completes any pending bookings and marks the ride cancelled.
+     * Refreshes ride statuses first so time-derived {@code completed} rides cannot be reopened.
+     */
+    public static boolean cancelRideAsAdmin(String rideId) {
+        String verifySQL =
+                "SELECT r.Status, r.Origin, r.Destination " +
+                "FROM Rides r " +
+                "WHERE r.Ride_ID = ? FOR UPDATE";
+
+        String getPassengersSQL =
+                "SELECT b.User_ID " +
+                "FROM Bookings b " +
+                "WHERE b.Ride_ID = ? AND b.Status IN ('pending', 'accepted')";
+
+        String cancelBookingsSQL =
+                "UPDATE Bookings SET Status = 'cancelled' WHERE Ride_ID = ? AND Status IN ('pending', 'accepted')";
+
+        String cancelRideSQL =
+                "UPDATE Rides SET Status = 'cancelled' WHERE Ride_ID = ?";
+
+        String insertNotifSQL =
+                "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
+
+        try (Connection c = DBConnection.get()) {
+            c.setAutoCommit(false);
+            try {
+                RideStatusStore.refreshRideStatuses(c);
+
+                String rideStatus;
+                String origin;
+                String destination;
+                try (PreparedStatement ps = c.prepareStatement(verifySQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            c.rollback();
+                            return false;
+                        }
+                        rideStatus = rs.getString("Status");
+                        origin = rs.getString("Origin");
+                        destination = rs.getString("Destination");
+                    }
+                }
+
+                if ("cancelled".equalsIgnoreCase(rideStatus) || "completed".equalsIgnoreCase(rideStatus)) {
+                    c.rollback();
+                    return false;
+                }
+
+                List<Integer> passengerIds = new ArrayList<>();
+                try (PreparedStatement ps = c.prepareStatement(getPassengersSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            passengerIds.add(rs.getInt("User_ID"));
+                        }
+                    }
+                }
+
+                try (PreparedStatement ps = c.prepareStatement(cancelBookingsSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = c.prepareStatement(cancelRideSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.executeUpdate();
+                }
+
+                if (!passengerIds.isEmpty()) {
+                    String message = "Your ride from " + origin + " to " + destination
+                            + " has been cancelled by UniRide administration.";
+                    try (PreparedStatement psNotif = c.prepareStatement(insertNotifSQL)) {
+                        for (int userId : passengerIds) {
+                            psNotif.setInt(1, userId);
+                            psNotif.setString(2, message);
+                            psNotif.executeUpdate();
+                        }
+                    }
+                }
+                int rideIdInt = Integer.parseInt(rideId);
+                LogRepository.log("RIDE_CANCELLED", null, rideIdInt, null, "Ride " + rideId + " cancelled by admin");
+                c.commit();
+                return true;
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("cancelRideAsAdmin failed", e);
         }
     }
 }

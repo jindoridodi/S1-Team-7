@@ -12,6 +12,7 @@ import model.User;
 import repository.BookingRepository;
 import repository.ReviewRepository;
 import repository.RideRepository;
+import repository.UserRepository;
 import repository.VehicleRepository;
 
 import java.util.HashSet;
@@ -41,6 +42,21 @@ public class DriverDashboard extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
+        if (!user.hasRole("driver")) {
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
+            return;
+        }
+        if (!UserRepository.isVerifiedDriver(user.getEmail())) {
+            String verification = UserRepository.getDriverVerificationStatus(user.getEmail());
+            req.setAttribute(
+                    "verificationMessage",
+                    "rejected".equalsIgnoreCase(verification)
+                            ? "Your driver registration was rejected. You cannot host rides on UniRide."
+                            : "Your driver registration is awaiting admin approval. You will unlock the driver dashboard once an administrator verifies your license.");
+            req.getRequestDispatcher("/WEB-INF/views/driver-verification-gate.jsp").forward(req, resp);
+            return;
+        }
+
         String error = safe(req.getParameter("error"));
         if ("requestNotProcessed".equals(error)) {
             req.setAttribute("error",
@@ -100,6 +116,14 @@ public class DriverDashboard extends HttpServlet {
         User user = (User) req.getSession(true).getAttribute("currentUser");
         if (user == null) {
             resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+        if (!user.hasRole("driver")) {
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
+            return;
+        }
+        if (!UserRepository.isVerifiedDriver(user.getEmail())) {
+            resp.sendRedirect(req.getContextPath() + "/dashboard/driver");
             return;
         }
 

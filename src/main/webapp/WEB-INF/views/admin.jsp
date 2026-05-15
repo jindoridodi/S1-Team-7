@@ -4,6 +4,8 @@ String cp = request.getContextPath();
 boolean isAdmin = Boolean.TRUE.equals(session.getAttribute("isAdmin"));
 java.util.List<String[]> pendingDrivers = (java.util.List<String[]>) request.getAttribute("pendingDrivers");
 if (pendingDrivers == null) pendingDrivers = java.util.Collections.emptyList();
+java.util.List<String[]> allRides = (java.util.List<String[]>) request.getAttribute("allRides");
+if (allRides == null) allRides = java.util.Collections.emptyList();
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -90,6 +92,49 @@ if (pendingDrivers == null) pendingDrivers = java.util.Collections.emptyList();
             </div>
           <% } %>
         </section>
+
+        <section class="dashboard-section dashboard-passenger-section">
+          <div class="dashboard-section-heading">
+            <h3>All ride history</h3>
+            <p>Every ride in the system. Cancel rides that are still active (open or full, or in progress) before they are completed.</p>
+          </div>
+          <% if (allRides.isEmpty()) { %>
+            <div class="dashboard-empty">
+              <p>No rides recorded yet.</p>
+            </div>
+          <% } else { %>
+            <div class="ride-list">
+              <% for (String[] rideRow : allRides) {
+                   String rideStatus = rideRow.length > 8 ? rideRow[8] : "";
+                   boolean canCancel = rideStatus != null && !rideStatus.equalsIgnoreCase("cancelled") && !rideStatus.equalsIgnoreCase("completed");
+              %>
+                <div class="ride-item">
+                  <div class="ride-row">
+                    <div class="ride-info">
+                      <strong>Ride #<%= rideRow[0] %></strong>
+                      <span class="ride-meta"><%= rideStatus != null ? rideStatus : "" %></span>
+                      <small class="ride-meta">Driver: <%= rideRow[1] %> <%= rideRow[2] %> (<%= rideRow[3] %>)</small>
+                      <small class="ride-meta"><%= rideRow[4] %> &rarr; <%= rideRow[5] %></small>
+                      <small class="ride-meta">Departs: <%= rideRow[6] %> &middot; Seats left: <%= rideRow[7] %></small>
+                    </div>
+                    <div class="ride-actions">
+                      <% if (canCancel) { %>
+                        <form method="post" action="<%= cp %>/admin" class="dashboard-inline-form" onsubmit="return confirm('Cancel this ride for all passengers?');">
+                          <input type="hidden" name="action" value="cancelRide" />
+                          <input type="hidden" name="rideId" value="<%= rideRow[0] %>" />
+                          <button type="submit" class="request-decline">Cancel ride</button>
+                        </form>
+                      <% } else { %>
+                        <span class="ride-meta">&mdash;</span>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+        </section>
+
       <% } %>
 
     </div>

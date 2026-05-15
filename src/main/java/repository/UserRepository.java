@@ -110,7 +110,7 @@ public final class UserRepository {
 
             if (roles.contains("driver")) {
                 try (PreparedStatement pd = c.prepareStatement(
-                        "INSERT INTO Drivers (User_ID, License_Number, Verification_Status, Driver_Rating) VALUES (?, ?, 'verified', 0.0)")) {
+                        "INSERT INTO Drivers (User_ID, License_Number, Verification_Status, Driver_Rating) VALUES (?, ?, 'pending', 0.0)")) {
                     pd.setInt(1, userId);
                     pd.setString(2, licenseNumber);
                     pd.executeUpdate();
@@ -247,6 +247,35 @@ public final class UserRepository {
         } catch (SQLException e) {
             throw new RuntimeException("getDriverVerificationStatus failed", e);
         }
+    }
+
+    /**
+     * True when the email belongs to an active driver row approved by an admin.
+     */
+    public static boolean isVerifiedDriver(String email) {
+        String s = getDriverVerificationStatus(email);
+        return s != null && "verified".equalsIgnoreCase(s.trim());
+    }
+
+    /**
+     * Primary dashboard URL path (no context) after login or for nav: passenger dashboard is used when the user
+     * is not yet an approved driver (including passenger-only and passenger+pending-driver).
+     */
+    public static String primaryDashboardPathRelative(User user) {
+        if (user == null) {
+            return "/login";
+        }
+        boolean verifiedDriver = user.hasRole("driver") && isVerifiedDriver(user.getEmail());
+        if (user.hasRole("passenger") && !verifiedDriver) {
+            return "/dashboard/passenger";
+        }
+        if (verifiedDriver) {
+            return "/dashboard/driver";
+        }
+        if (user.hasRole("driver")) {
+            return "/dashboard/driver";
+        }
+        return "/dashboard/passenger";
     }
 }
 
