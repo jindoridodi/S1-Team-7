@@ -67,6 +67,50 @@ public final class RideRepository {
         }
     }
 
+    /**
+     * Returns one bookable ride for the passenger confirm-request flow, or null if unavailable.
+     */
+    public static Ride getAvailableRideById(String rideId) {
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            String sql =
+                    "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
+                    "       CONCAT(u.First_Name, ' ', LEFT(u.Last_Name, 1), '.') AS Driver_Name, " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info, " +
+                    "       u.Gender AS Driver_Gender " +
+                    "FROM Rides r " +
+                    "LEFT JOIN Users u ON u.User_ID = r.Driver_ID " +
+                    "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
+                    "WHERE r.Ride_ID = ? " +
+                    "  AND r.Status = 'open' " +
+                    "  AND r.Seats_Left > 0 " +
+                    "  AND r.Departure_Date > NOW() " +
+                    "LIMIT 1";
+
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setInt(1, Integer.parseInt(rideId));
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    return new Ride(
+                            String.valueOf(rs.getInt("Ride_ID")),
+                            rs.getString("Origin"),
+                            rs.getString("Destination"),
+                            rs.getString("Departure_Date"),
+                            rs.getInt("Seats_Left"),
+                            rs.getString("Status"),
+                            rs.getString("Driver_Name"),
+                            rs.getString("Vehicle_Info"),
+                            rs.getString("Driver_Gender")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("getAvailableRideById failed", e);
+        }
+    }
+
     /** Returns all rides created by this driver, most recent first. */
     public static List<Ride> getRidesForDriver(String driverEmail) {
         try (Connection c = DBConnection.get()) {
