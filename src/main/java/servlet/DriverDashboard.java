@@ -10,9 +10,13 @@ import javax.servlet.http.HttpServletResponse;
 
 import model.User;
 import repository.BookingRepository;
+import repository.ReviewRepository;
 import repository.RideRepository;
 import repository.UserRepository;
 import repository.VehicleRepository;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Driver dashboard for viewing and managing the current user's vehicles.
@@ -75,7 +79,14 @@ public class DriverDashboard extends HttpServlet {
         }
 
         if ("showRideHistory".equals(action)) {
-            req.setAttribute("driverRideHistory", RideRepository.getRideHistoryForDriver(user.getEmail()));
+            var history = RideRepository.getRideHistoryForDriver(user.getEmail());
+            req.setAttribute("driverRideHistory", history);
+            attachRideReviews(req, user.getEmail(), history);
+            if ("reviewSaved".equals(safe(req.getParameter("msg")))) {
+                req.setAttribute("successMessage", "Your note was posted.");
+            } else if ("reviewFailed".equals(safe(req.getParameter("msg")))) {
+                req.setAttribute("error", "Could not post that note. You can only review completed rides you hosted, once per ride.");
+            }
             req.getRequestDispatcher("/WEB-INF/views/driver-ride-history.jsp").forward(req, resp);
             return;
         }
@@ -215,7 +226,45 @@ public class DriverDashboard extends HttpServlet {
             }
         }
 
+        if ("submitReview".equals(action)) {
+            String rideId = safe(req.getParameter("rideId"));
+            String comments = safe(req.getParameter("comments"));
+            Integer rating = parseOptionalRating(req.getParameter("ratingStars"));
+            boolean ok = ReviewRepository.submitReview(user.getEmail(), rideId, rating, comments);
+            resp.sendRedirect(req.getContextPath() + "/dashboard/driver?action=showRideHistory&msg="
+                + (ok ? "reviewSaved" : "reviewFailed"));
+            return;
+        }
+
         resp.sendRedirect(req.getContextPath() + "/dashboard/driver");
+    }
+
+    private static void attachRideReviews(
+            HttpServletRequest req,
+            String userEmail,
+            java.util.List<model.Ride> history) {
+        Set<String> rideIds = new HashSet<>();
+        for (model.Ride row : history) {
+            if (row.getId() != null && "completed".equalsIgnoreCase(row.getStatus())) {
+                rideIds.add(row.getId());
+            }
+        }
+        if (rideIds.isEmpty()) {
+            return;
+        }
+        req.setAttribute("reviewsByRideId", ReviewRepository.getReviewsByRideIds(rideIds));
+        req.setAttribute("myReviewsByRideId", ReviewRepository.getMyReviewsByRideIds(userEmail, rideIds));
+    }
+
+    private static Integer parseOptionalRating(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**
