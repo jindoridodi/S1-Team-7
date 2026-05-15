@@ -17,7 +17,7 @@ if (rideHistory == null) {
   <link rel="stylesheet" href="<%= cp %>/assets/css/common.css?v=20260427" />
   <link rel="stylesheet" href="<%= cp %>/assets/css/home.css?v=20260427" />
   <link rel="stylesheet" href="<%= cp %>/assets/css/login.css?v=20260427" />
-  <link rel="stylesheet" href="<%= cp %>/assets/css/dashboard.css?v=20260427" />
+  <link rel="stylesheet" href="<%= cp %>/assets/css/dashboard.css?v=20260515" />
 </head>
 <body>
   <div class="login-page dashboard-page">
