@@ -15,7 +15,11 @@ import model.User;
 import repository.BookingRepository;
 import repository.NotificationRepository;
 import repository.RideRepository;
+import repository.ReviewRepository;
 import repository.SavedRouteRepository;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Passenger dashboard page for authenticated non-driver users.
@@ -52,7 +56,14 @@ public class PassengerDashboard extends HttpServlet {
         }
 
         if ("showRideHistory".equals(action)) {
-            req.setAttribute("rideHistory", BookingRepository.getRideHistoryForPassenger(user.getEmail()));
+            var history = BookingRepository.getRideHistoryForPassenger(user.getEmail());
+            req.setAttribute("rideHistory", history);
+            attachRideReviews(req, user.getEmail(), history);
+            if ("reviewSaved".equals(safe(req.getParameter("msg")))) {
+                req.setAttribute("successMessage", "Your note was posted.");
+            } else if ("reviewFailed".equals(safe(req.getParameter("msg")))) {
+                req.setAttribute("error", "Could not post that note. You can only review completed rides you joined, once per ride.");
+            }
             req.getRequestDispatcher("/WEB-INF/views/passenger-ride-history.jsp").forward(req, resp);
             return;
         }
@@ -174,7 +185,45 @@ public class PassengerDashboard extends HttpServlet {
             return;
         }
 
+        if ("submitReview".equals(action)) {
+            String rideId = safe(req.getParameter("rideId"));
+            String comments = safe(req.getParameter("comments"));
+            Integer rating = parseOptionalRating(req.getParameter("ratingStars"));
+            boolean ok = ReviewRepository.submitReview(user.getEmail(), rideId, rating, comments);
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger?action=showRideHistory&msg="
+                + (ok ? "reviewSaved" : "reviewFailed"));
+            return;
+        }
+
         resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
+    }
+
+    private static void attachRideReviews(
+            HttpServletRequest req,
+            String userEmail,
+            java.util.List<model.UpcomingRide> history) {
+        Set<String> rideIds = new HashSet<>();
+        for (model.UpcomingRide row : history) {
+            if (row.isReviewable()) {
+                rideIds.add(row.getRideId());
+            }
+        }
+        if (rideIds.isEmpty()) {
+            return;
+        }
+        req.setAttribute("reviewsByRideId", ReviewRepository.getReviewsByRideIds(rideIds));
+        req.setAttribute("myReviewsByRideId", ReviewRepository.getMyReviewsByRideIds(userEmail, rideIds));
+    }
+
+    private static Integer parseOptionalRating(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String safe(String value) {
