@@ -41,43 +41,47 @@ if (currentUser != null) {
           </p>
           <div class="hero-btns">
             <a class="main-btn-primary" href="<%= cp %>/signup">Get Started</a>
-            <a class="main-btn-outline" href="<%= cp %>/login">View Rides -&gt;</a>
+            <% if (currentUser == null) { %>
+              <a class="main-btn-outline" href="<%= cp %>/login">Log In</a>
+            <% } else { %>
+              <a class="main-btn-outline" href="<%= dashboardPath %>">Go to Dashboard</a>
+            <% } %>
           </div>
         </div>
 
-        <div class="search-card">
-          <h4 class="card-label">Find a Ride Now</h4>
-          <div class="input-group">
-            <label>FROM</label>
-            <input type="text" id="search-origin" placeholder="Your pickup location" />
+        <% if (currentUser == null) { %>
+          <div class="search-card home-login-card">
+            <h4 class="card-label">Log In</h4>
+            <p class="home-login-lead">Sign in with your @sjsu.edu account to search rides and manage your trips.</p>
+            <form class="home-login-form" method="post" action="<%= cp %>/login" novalidate>
+              <div class="input-group">
+                <label for="home-email">Email</label>
+                <input id="home-email" name="email" type="email" placeholder="you@sjsu.edu" autocomplete="email" required />
+              </div>
+              <div class="input-group">
+                <label for="home-password">Password</label>
+                <input id="home-password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+              </div>
+              <button class="search-submit" type="submit">Log in &rarr;</button>
+            </form>
+            <p class="home-login-signup">New to UniRide? <a href="<%= cp %>/signup">Create an account</a></p>
           </div>
-          <div class="input-group">
-            <label>TO</label>
-            <input type="text" id="search-destination" placeholder="San Jose State University" />
+        <% } else { %>
+          <div class="search-card home-login-card">
+            <h4 class="card-label">Welcome back</h4>
+            <p class="home-login-lead">You are signed in as <%= currentUser.getFirstName() %>.</p>
+            <a class="search-submit home-login-dashboard" href="<%= dashboardPath %>">Go to Dashboard &rarr;</a>
           </div>
-          <div class="input-row">
-            <div class="input-group">
-              <label>DATE</label>
-              <input type="date" id="search-date" />
-            </div>
-            <div class="input-group input-group--seats">
-              <label>SEATS</label>
-              <select id="search-seats">
-                <option>1</option>
-                <option>2</option>
-                <option>3</option>
-              </select>
-            </div>
-          </div>
-          <button class="search-submit" type="button" onclick="searchRides()">Search rides &rarr;</button>
-        </div>
+        <% } %>
       </div>
     </main>
 
     <section class="stats-bar">
+      
       <div class="stat-item"><h3>2k+</h3><p>SPARTAN RIDERS</p></div>
       <div class="stat-item"><h3>320</h3><p>RIDES THIS WEEK</p></div>
       <div class="stat-item"><h3>4.9</h3><p>AVG RATING</p></div>
+      
       <div class="stat-item"><h3 class="highlight">$18</h3><p>AVG TRIP SAVED</p></div>
     </section>
 
@@ -113,21 +117,5 @@ if (currentUser != null) {
       </div>
     </footer>
   </div>
-  <script>
-    function searchRides() {
-      var origin      = document.getElementById('search-origin').value.trim();
-      var destination = document.getElementById('search-destination').value.trim();
-      var date        = document.getElementById('search-date').value;
-      var url = '<%= cp %>/dashboard/passenger?action=searchRides'
-              + '&searchOrigin=' + encodeURIComponent(origin)
-              + '&searchDestination=' + encodeURIComponent(destination)
-              + '&searchDate=' + encodeURIComponent(date);
-      <% if (currentUser == null) { %>
-      window.location.href = '<%= cp %>/login?redirect=' + encodeURIComponent(url);
-      <% } else { %>
-      window.location.href = url;
-      <% } %>
-    }
-  </script>
 </body>
 </html>

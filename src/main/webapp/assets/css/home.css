@@ -219,6 +219,35 @@
   color: var(--sjsu-gold);
 }
 
+.home-login-lead {
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-xl);
+}
+
+.home-login-signup {
+  margin: var(--spacing-lg) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.home-login-signup a {
+  color: var(--sjsu-gold);
+  text-decoration: none;
+}
+
+.home-login-signup a:hover {
+  text-decoration: underline;
+}
+
+.home-login-dashboard {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
 .stats-bar {
   display: flex;
   justify-content: space-around;
