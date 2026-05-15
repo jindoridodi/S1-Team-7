@@ -174,7 +174,7 @@ public final class BookingRepository {
              * Uses COALESCE to support both ride-linked bookings and unassigned booking requests.
              */
             String sql =
-                    "SELECT b.Booking_ID, b.Status AS Booking_Status, " +
+                    "SELECT b.Booking_ID, b.Ride_ID, b.Status AS Booking_Status, r.Status AS Ride_Status, " +
                     "       COALESCE(r.Origin, b.Origin) AS Origin, " +
                     "       COALESCE(r.Destination, b.Destination) AS Destination, " +
                     "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date, " +
@@ -198,9 +198,12 @@ public final class BookingRepository {
                 List<UpcomingRide> list = new ArrayList<>();
                 try (ResultSet rs = ps2.executeQuery()) {
                     while (rs.next()) {
+                        Integer ridePk = rs.getObject("Ride_ID", Integer.class);
                         list.add(new UpcomingRide(
                                 String.valueOf(rs.getInt("Booking_ID")),
+                                ridePk == null ? null : String.valueOf(ridePk),
                                 rs.getString("Booking_Status"),
+                                rs.getString("Ride_Status"),
                                 rs.getString("Origin"),
                                 rs.getString("Destination"),
                                 rs.getString("Departure_Date"),
@@ -239,7 +242,7 @@ public final class BookingRepository {
              * Orders most recent first for history view.
              */
             String sql =
-                    "SELECT b.Booking_ID, b.Status AS Booking_Status, " +
+                    "SELECT b.Booking_ID, b.Ride_ID, b.Status AS Booking_Status, r.Status AS Ride_Status, " +
                     "       COALESCE(r.Origin, b.Origin) AS Origin, " +
                     "       COALESCE(r.Destination, b.Destination) AS Destination, " +
                     "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date, " +
@@ -263,9 +266,12 @@ public final class BookingRepository {
                 List<UpcomingRide> list = new ArrayList<>();
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
+                        Integer ridePk = rs.getObject("Ride_ID", Integer.class);
                         list.add(new UpcomingRide(
                                 String.valueOf(rs.getInt("Booking_ID")),
+                                ridePk == null ? null : String.valueOf(ridePk),
                                 rs.getString("Booking_Status"),
+                                rs.getString("Ride_Status"),
                                 rs.getString("Origin"),
                                 rs.getString("Destination"),
                                 rs.getString("Departure_Date"),
