@@ -125,6 +125,41 @@ public final class BookingRepository {
     }
 
     /**
+     * Submits a pending seat request for an existing ride without checking capacity or open status.
+     *
+     * @param passengerEmail authenticated passenger email
+     * @param rideId ride identifier
+     * @param seatsRequested number of seats requested
+     */
+    public static void requestSeatOnRide(String passengerEmail, String rideId, int seatsRequested) {
+        if (seatsRequested <= 0) {
+            throw new IllegalArgumentException("seatsRequested must be positive");
+        }
+
+        String insertSql =
+                "INSERT INTO Bookings (User_ID, Ride_ID, Origin, Destination, Departure_Date, Seats_Requested, Booking_Timestamp, Status) " +
+                "SELECT u.User_ID, r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, ?, CURRENT_TIMESTAMP, 'pending' " +
+                "FROM Users u " +
+                "JOIN Rides r ON r.Ride_ID = ? " +
+                "WHERE u.Email = ? AND u.Account_Status = 'active' " +
+                "  AND COALESCE(r.Status, '') NOT IN ('cancelled', 'completed')";
+
+        try (Connection c = DBConnection.get();
+             PreparedStatement ps = c.prepareStatement(insertSql)) {
+            ps.setInt(1, seatsRequested);
+            ps.setInt(2, Integer.parseInt(rideId));
+            ps.setString(3, passengerEmail);
+            if (ps.executeUpdate() == 0) {
+                throw new SQLException("No booking row created for seat request");
+            }
+            LogRepository.log("BOOKING_CREATED", null, Integer.parseInt(rideId), null,
+                    "Passenger " + passengerEmail + " requested seats on ride " + rideId);
+        } catch (SQLException e) {
+            throw new RuntimeException("requestSeatOnRide failed", e);
+        }
+    }
+
+    /**
      * Creates a pending booking request that is not yet assigned to a ride.
      *
      * The passenger identity is resolved server-side from the email for an active account.
@@ -402,30 +437,33 @@ public final class BookingRepository {
     }
 
     /**
-     * Lists unassigned passenger requests that drivers can fulfill by creating a matching ride.
+     * Lists pending passenger requests: open (unassigned) requests and seat requests on this driver's rides.
      *
-     * @param driverEmail authenticated driver email (currently not used for filtering)
-     * @return list of pending, unassigned requests
+     * @param driverEmail authenticated driver email
+     * @return list of pending requests
      */
     public static List<PassengerRequest> getPassengerRequestsForDriver(String driverEmail) {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
 
-            /*
-             * Lists unassigned passenger requests awaiting a driver's offer (Ride_ID is NULL, Status pending).
-             * Shown on the driver dashboard; ordered newest-first for triage.
-             */
             String sql =
                     "SELECT b.Booking_ID, b.Status AS Booking_Status, b.Booking_Timestamp, " +
                     "       CONCAT(pu.First_Name, ' ', LEFT(pu.Last_Name, 1), '.') AS Passenger_Name, " +
-                    "       b.Origin, b.Destination, b.Departure_Date, b.Seats_Requested AS Seats_Left " +
+                    "       COALESCE(r.Origin, b.Origin) AS Origin, " +
+                    "       COALESCE(r.Destination, b.Destination) AS Destination, " +
+                    "       COALESCE(r.Departure_Date, b.Departure_Date) AS Departure_Date, " +
+                    "       b.Seats_Requested AS Seats_Left " +
                     "FROM Bookings b " +
                     "JOIN Users pu ON pu.User_ID = b.User_ID " +
-                    "WHERE b.Status = 'pending' AND b.Ride_ID IS NULL " +
+                    "LEFT JOIN Rides r ON r.Ride_ID = b.Ride_ID " +
+                    "LEFT JOIN Users du ON du.User_ID = r.Driver_ID " +
+                    "WHERE b.Status = 'pending' " +
+                    "  AND (b.Ride_ID IS NULL OR (du.Email = ? AND du.Account_Status = 'active')) " +
                     "ORDER BY b.Booking_Timestamp DESC";
 
             List<PassengerRequest> list = new ArrayList<>();
             try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, driverEmail);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         list.add(new PassengerRequest(
@@ -461,9 +499,6 @@ public final class BookingRepository {
      */
     public static boolean updatePassengerRequestStatus(String driverEmail, String bookingId, String newStatus, String vehicleId) {
         if (!"accepted".equalsIgnoreCase(newStatus)) {
-            return false;
-        }
-        if (vehicleId == null || vehicleId.isBlank()) {
             return false;
         }
 
@@ -504,13 +539,29 @@ public final class BookingRepository {
                 }
             }
 
-            // Only pending, unassigned requests can be acted on.
-            if (!"pending".equalsIgnoreCase(bookingStatus) || existingRideId != null) {
+            if (!"pending".equalsIgnoreCase(bookingStatus)) {
                 c.rollback();
                 return false;
             }
 
-            // accepted: choose driver's first vehicle and create a Ride to fulfill this request.
+            if (existingRideId != null) {
+                boolean accepted = acceptPendingSeatOnOwnedRide(
+                        c, driverEmail, Integer.parseInt(bookingId), existingRideId,
+                        seatsRequested, passengerUserId);
+                if (accepted) {
+                    c.commit();
+                } else {
+                    c.rollback();
+                }
+                return accepted;
+            }
+
+            if (vehicleId == null || vehicleId.isBlank()) {
+                c.rollback();
+                return false;
+            }
+
+            // accepted: create a new ride to fulfill an open (unassigned) request.
             int driverId;
             String driverFirstName;
             try (PreparedStatement ps = c.prepareStatement(
@@ -600,6 +651,80 @@ public final class BookingRepository {
         } catch (SQLException e) {
             throw new RuntimeException("updatePassengerRequestStatus failed", e);
         }
+    }
+
+    /**
+     * Accepts a pending seat request on a ride owned by the authenticated driver.
+     */
+    private static boolean acceptPendingSeatOnOwnedRide(
+            Connection c,
+            String driverEmail,
+            int bookingId,
+            int rideId,
+            Integer seatsRequested,
+            int passengerUserId) throws SQLException {
+        if (seatsRequested == null || seatsRequested <= 0) {
+            return false;
+        }
+
+        String verifySql =
+                "SELECT r.Seats_Left, r.Status, r.Origin, r.Destination, u.First_Name " +
+                "FROM Rides r " +
+                "JOIN Users u ON u.User_ID = r.Driver_ID " +
+                "WHERE r.Ride_ID = ? AND u.Email = ? AND u.Account_Status = 'active' FOR UPDATE";
+
+        int seatsLeft;
+        String rideStatus;
+        String origin;
+        String destination;
+        String driverFirstName;
+
+        try (PreparedStatement ps = c.prepareStatement(verifySql)) {
+            ps.setInt(1, rideId);
+            ps.setString(2, driverEmail);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return false;
+                }
+                seatsLeft = rs.getInt("Seats_Left");
+                rideStatus = rs.getString("Status");
+                origin = rs.getString("Origin");
+                destination = rs.getString("Destination");
+                driverFirstName = rs.getString("First_Name");
+            }
+        }
+
+        if ("cancelled".equalsIgnoreCase(rideStatus) || "completed".equalsIgnoreCase(rideStatus)) {
+            return false;
+        }
+        if (seatsLeft < seatsRequested) {
+            return false;
+        }
+
+        try (PreparedStatement ps = c.prepareStatement(
+                "UPDATE Bookings SET Status = 'accepted' WHERE Booking_ID = ? AND Status = 'pending'")) {
+            ps.setInt(1, bookingId);
+            if (ps.executeUpdate() == 0) {
+                return false;
+            }
+        }
+
+        try (PreparedStatement ps = c.prepareStatement(
+                "UPDATE Rides SET Seats_Left = Seats_Left - ? WHERE Ride_ID = ?")) {
+            ps.setInt(1, seatsRequested);
+            ps.setInt(2, rideId);
+            ps.executeUpdate();
+        }
+
+        RideStatusStore.refreshRideStatuses(c);
+
+        String driverName = driverFirstName != null && !driverFirstName.isBlank() ? driverFirstName : "Your driver";
+        String from = origin != null && !origin.isBlank() ? origin : "your pickup";
+        String to = destination != null && !destination.isBlank() ? destination : "your destination";
+        NotificationRepository.insertNotification(c, passengerUserId,
+                driverName + " accepted your seat request from " + from + " to " + to + ".");
+
+        return true;
     }
 }
 

@@ -68,9 +68,10 @@ public final class RideRepository {
     }
 
     /**
-     * Returns one bookable ride for the passenger confirm-request flow, or null if unavailable.
+     * Returns a ride for the passenger seat-request flow, or null if the ride does not exist.
+     * Does not filter on open status or remaining seats so passengers can always submit a request.
      */
-    public static Ride getAvailableRideById(String rideId) {
+    public static Ride getRideByIdForSeatRequest(String rideId) {
         try (Connection c = DBConnection.get()) {
             RideStatusStore.refreshRideStatuses(c);
             String sql =
@@ -82,9 +83,7 @@ public final class RideRepository {
                     "LEFT JOIN Users u ON u.User_ID = r.Driver_ID " +
                     "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
                     "WHERE r.Ride_ID = ? " +
-                    "  AND r.Status = 'open' " +
-                    "  AND r.Seats_Left > 0 " +
-                    "  AND r.Departure_Date > NOW() " +
+                    "  AND COALESCE(r.Status, '') NOT IN ('cancelled', 'completed') " +
                     "LIMIT 1";
 
             try (PreparedStatement ps = c.prepareStatement(sql)) {
@@ -107,7 +106,7 @@ public final class RideRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("getAvailableRideById failed", e);
+            throw new RuntimeException("getRideByIdForSeatRequest failed", e);
         }
     }
 

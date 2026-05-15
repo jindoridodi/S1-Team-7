@@ -51,8 +51,6 @@ String msg = (String) request.getAttribute("msg");
 
         <% if ("seatRequested".equals(msg)) { %>
           <p class="signup-success">Your seat request was submitted. Check Upcoming Rides on your dashboard.</p>
-        <% } else if ("seatRequestFailed".equals(msg)) { %>
-          <p style="color:#f87171;text-align:center;">Could not request that seat. The ride may be full or no longer available.</p>
         <% } %>
         <% if (request.getAttribute("error") != null) { %>
           <p style="color:#f87171;text-align:center;"><%= request.getAttribute("error") %></p>
@@ -126,12 +124,8 @@ String msg = (String) request.getAttribute("msg");
                         <% } %>
                       </div>
                       <div class="ride-actions">
-                        <% if (ride.getSeatsLeft() > 0 && "open".equalsIgnoreCase(ride.getStatus())) { %>
-                          <a href="<%= cp %>/dashboard/passenger?action=confirmSeatRequest&amp;rideId=<%= ride.getId() %>"
-                             class="request-approve ride-request-link">Request seat</a>
-                        <% } else { %>
-                          <span class="ride-meta">Not available</span>
-                        <% } %>
+                        <a href="<%= cp %>/dashboard/passenger?action=confirmSeatRequest&amp;rideId=<%= ride.getId() %>"
+                           class="request-approve ride-request-link">Request seat</a>
                       </div>
                     </div>
                   </div>

@@ -56,7 +56,11 @@ try {
               <% } %>
               <small class="ride-meta">Vehicle: <%= ride.getVehicleInfo() != null ? ride.getVehicleInfo() : "—" %></small>
               <small class="ride-meta">Departure: <%= formattedDeparture %><% if (!formattedTime.isBlank()) { %> at <%= formattedTime %><% } %></small>
-              <small class="ride-meta ride-meta--success">Seats available: <%= ride.getSeatsLeft() %></small>
+              <% if (ride.getSeatsLeft() > 0) { %>
+                <small class="ride-meta ride-meta--success">Seats available: <%= ride.getSeatsLeft() %></small>
+              <% } else { %>
+                <small class="ride-meta ride-meta--warn">Listed seats: <%= ride.getSeatsLeft() %> — your request will still be sent to the driver</small>
+              <% } %>
             </div>
           </div>
 
@@ -67,7 +71,7 @@ try {
             <div class="form-group">
               <label for="seatsRequested"><strong>Seats requested</strong></label>
               <input type="number" id="seatsRequested" name="seatsRequested" class="login-input"
-                     min="1" max="<%= ride.getSeatsLeft() %>" value="1" required />
+                     min="1" max="10" value="1" required />
             </div>
 
             <button type="submit" class="action-create u-w-100 u-text-center booking-submit">Submit seat request</button>

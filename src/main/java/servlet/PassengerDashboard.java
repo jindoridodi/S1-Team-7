@@ -52,7 +52,7 @@ public class PassengerDashboard extends HttpServlet {
 
         if ("confirmSeatRequest".equals(action)) {
             String rideId = safe(req.getParameter("rideId"));
-            Ride ride = rideId.isBlank() ? null : RideRepository.getAvailableRideById(rideId);
+            Ride ride = rideId.isBlank() ? null : RideRepository.getRideByIdForSeatRequest(rideId);
             if (ride == null) {
                 resp.sendRedirect(req.getContextPath() + "/dashboard/passenger?action=searchRides&error=rideUnavailable");
                 return;
@@ -87,8 +87,6 @@ public class PassengerDashboard extends HttpServlet {
         String msg = safe(req.getParameter("msg"));
         if ("seatRequested".equals(msg)) {
             req.setAttribute("successMessage", "Your seat request was submitted. See Upcoming Rides below.");
-        } else if ("seatRequestFailed".equals(msg)) {
-            req.setAttribute("error", "Could not request that seat. The ride may be full or no longer available.");
         } else if ("openRequestPosted".equals(msg)) {
             req.setAttribute("successMessage", "Your open ride request was posted for drivers.");
         }
@@ -129,16 +127,14 @@ public class PassengerDashboard extends HttpServlet {
         if ("requestSeatOnRide".equals(action) || "bookExistingRide".equals(action)) {
             String rideId = safe(req.getParameter("rideId"));
             String seatsRequested = safe(req.getParameter("seatsRequested"));
-            boolean ok = false;
             if (!rideId.isBlank() && !seatsRequested.isBlank()) {
                 try {
                     int seats = Integer.parseInt(seatsRequested);
-                    ok = BookingRepository.bookExistingRide(user.getEmail(), rideId, seats);
+                    BookingRepository.requestSeatOnRide(user.getEmail(), rideId, seats);
                 } catch (NumberFormatException ignored) {
                 }
             }
-            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger?action=searchRides&msg="
-                + (ok ? "seatRequested" : "seatRequestFailed"));
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger?msg=seatRequested");
             return;
         }
 
