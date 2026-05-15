@@ -8,7 +8,6 @@
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
-boolean pending = request.getAttribute("pendingVerification") != null;
 List<PassengerRequest> passengerRequests = (List<PassengerRequest>) request.getAttribute("passengerRequests");
 if (passengerRequests == null) {
   passengerRequests = java.util.Collections.emptyList();
@@ -53,26 +52,6 @@ if (driverVehicles == null) {
     <div class="dashboard-main">
       <div class="dashboard-main-inner">
 
-        <% if (pending) { %>
-          <%-- Pending verification screen --%>
-          <div class="login-shell dashboard-card dashboard-pending">
-            <h3>Account Pending Verification</h3>
-            <p class="dashboard-pending-lead">
-              Your driver account is currently under review. Once verified by an admin,
-              you will have full access to the driver dashboard.
-            </p>
-            <p class="dashboard-pending-note">
-              In the meantime, you can use UniRide as a passenger.
-            </p>
-            <div class="dashboard-pending-cta">
-              <a href="<%= cp %>/dashboard/passenger" class="login-submit u-inline-flex-center">
-                Go to Passenger Dashboard
-              </a>
-            </div>
-          </div>
-
-        <% } else { %>
-          <%-- Full driver dashboard --%>
           <section class="dashboard-hero dashboard-section">
             <div class="dashboard-hero-copy">
               <span class="campus-tag">Driver Hub</span>
@@ -233,7 +212,6 @@ if (driverVehicles == null) {
             <% } %>
 
           </section>
-        <% } %>
 
       </div>
     </div>

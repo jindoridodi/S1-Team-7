@@ -98,7 +98,6 @@ public class Signup extends HttpServlet {
             req.setAttribute("errorRoles", "Please choose at least one registration type.");
         }
 
-        // Driver accounts need a license so the pending verification flow has the required data.
         if (roles.contains("driver") && licenseNumber.isBlank()) {
             req.setAttribute("errorLicense", "License number is required for drivers.");
         }
@@ -132,14 +131,7 @@ public class Signup extends HttpServlet {
             return;
         }
 
-        // Driver registrations remain pending until an admin verifies the account.
-        if (roles.contains("driver")) {
-            req.setAttribute("successMessage",
-                "Registration complete! Your driver account is pending verification. " +
-                "You can log in as a passenger in the meantime.");
-        } else {
-            req.setAttribute("successMessage", "Registration complete. Your account has been created.");
-        }
+        req.setAttribute("successMessage", "Registration complete. Your account has been created.");
         // Clear role selections on success so the rendered form does not imply a retry state.
         req.setAttribute("roles", new String[0]);
         req.getRequestDispatcher("/WEB-INF/views/signup.jsp").forward(req, resp);

@@ -110,8 +110,7 @@ public final class UserRepository {
 
             if (roles.contains("driver")) {
                 try (PreparedStatement pd = c.prepareStatement(
-                        /* Adds driver role details; verification is pending until admin approval. */
-                        "INSERT INTO Drivers (User_ID, License_Number, Verification_Status, Driver_Rating) VALUES (?, ?, 'pending', 0.0)")) {
+                        "INSERT INTO Drivers (User_ID, License_Number, Verification_Status, Driver_Rating) VALUES (?, ?, 'verified', 0.0)")) {
                     pd.setInt(1, userId);
                     pd.setString(2, licenseNumber);
                     pd.executeUpdate();

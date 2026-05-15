@@ -12,7 +12,6 @@ import model.User;
 import repository.BookingRepository;
 import repository.ReviewRepository;
 import repository.RideRepository;
-import repository.UserRepository;
 import repository.VehicleRepository;
 
 import java.util.HashSet;
@@ -42,17 +41,6 @@ public class DriverDashboard extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
-        String status = UserRepository.getDriverVerificationStatus(user.getEmail());
-
-        if (status == null || !status.equalsIgnoreCase("verified")) {
-            // Keep JSP rendering in sync with access control:
-            // unverified drivers should see the pending verification screen.
-            req.setAttribute("pendingVerification", true);
-            req.getRequestDispatcher("/WEB-INF/views/driver-dashboard.jsp").forward(req, resp);
-            return;
-        }
-        
-
         String error = safe(req.getParameter("error"));
         if ("requestNotProcessed".equals(error)) {
             req.setAttribute("error",
@@ -112,13 +100,6 @@ public class DriverDashboard extends HttpServlet {
         User user = (User) req.getSession(true).getAttribute("currentUser");
         if (user == null) {
             resp.sendRedirect(req.getContextPath() + "/login");
-            return;
-        }
-
-        // Enforce the same verification guard on POST actions.
-        String status = UserRepository.getDriverVerificationStatus(user.getEmail());
-        if (status == null || !status.equalsIgnoreCase("verified")) {
-            resp.sendRedirect(req.getContextPath() + "/dashboard/driver?error=pendingVerification");
             return;
         }
 
