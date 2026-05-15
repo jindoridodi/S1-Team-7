@@ -3,13 +3,8 @@
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
-String dashboardPath = cp + "/login";
-if (currentUser != null) {
-  dashboardPath = cp + "/dashboard/passenger";
-  if (currentUser.hasRole("driver")) {
-    dashboardPath = cp + "/dashboard/driver";
-  }
-}
+Object dashboardAttr = request.getAttribute("dashboardPath");
+String dashboardPath = dashboardAttr instanceof String ? (String) dashboardAttr : (cp + "/login");
 %>
 <!DOCTYPE html>
 <html lang="en">

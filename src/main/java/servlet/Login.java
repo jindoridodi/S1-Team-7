@@ -62,13 +62,7 @@ public class Login extends HttpServlet {
             return;
         }
 
-        if (user.hasRole("driver")) {
-            resp.sendRedirect(req.getContextPath() + "/dashboard/driver");
-        } else if (user.hasRole("passenger")) {
-            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
-        } else {
-            resp.sendRedirect(req.getContextPath() + "/home");
-        }
+        resp.sendRedirect(req.getContextPath() + UserRepository.primaryDashboardPathRelative(user));
     }
 
     /**
