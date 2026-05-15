@@ -452,6 +452,17 @@
   line-height: 1.6;
 }
 
+.dashboard-request-ride-link {
+  margin-top: var(--spacing-xl);
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.dashboard-request-ride-link a {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
 .settings-panel {
   width: 100%;
   max-width: none;

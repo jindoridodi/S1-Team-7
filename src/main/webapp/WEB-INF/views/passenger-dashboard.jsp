@@ -85,78 +85,21 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
             <span class="campus-tag">Passenger Hub</span>
             <h2>Find the right ride and keep your trips organized.</h2>
             <p>
-              Search for rides near campus, review your bookings, and manage your passenger account from one place.
+              Browse open rides posted by drivers, then book a seat when you find a match.
             </p>
           </div>
 
           <div class="dashboard-actions">
-            <a class="login-submit action-find u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showCreateBookingForm">Find a Ride</a>
+            <a class="login-submit action-find u-inline-flex-center" href="#available-rides">Browse Available Rides</a>
             <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showRideHistory">Ride History</a>
             <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger?action=showSavedRoutes">My Saved Routes</a>
           </div>
         </section>
 
-        <section class="dashboard-section dashboard-passenger-section">
-          <div class="dashboard-section-heading">
-            <h3>Upcoming Rides</h3>
-            <p>Your pending or accepted rides are shown here. You can cancel before departure.</p>
-          </div>
-
-          <% if (upcomingRides.isEmpty()) { %>
-            <div class="dashboard-empty dashboard-empty--spaced">
-              <p>No upcoming rides yet.</p>
-            </div>
-          <% } else { %>
-            <div class="ride-list ride-list--spaced">
-              <% for (model.UpcomingRide upcomingRide : upcomingRides) {
-                   String rawDeparture = upcomingRide.getDepartureDate();
-                   String formattedDeparture = rawDeparture;
-                   String formattedTime = "";
-                   try {
-                     DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
-                     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("h:mm a");
-                     LocalDateTime dt = LocalDateTime.parse(rawDeparture, parser);
-                     formattedDeparture = dt.format(dateFormatter);
-                     formattedTime = dt.format(timeFormatter);
-                   } catch (Exception ignored) {
-                   }
-              %>
-                <div class="ride-item">
-                  <div class="ride-row">
-                    <div class="ride-info">
-                      <strong><%= upcomingRide.getOrigin() %> → <%= upcomingRide.getDestination() %></strong><br />
-                      <small class="ride-meta">Booking ID: #<%= upcomingRide.getBookingId() %></small>
-                      <small class="ride-meta">Status: <%= upcomingRide.getBookingStatus() %></small>
-                      <small class="ride-meta">Driver: <%= upcomingRide.getDriverName() != null ? upcomingRide.getDriverName() : "Not assigned" %></small>
-                      <% if (upcomingRide.getDriverGender() != null && !upcomingRide.getDriverGender().isBlank()) { %>
-                        <small class="ride-meta">Driver gender: <%= upcomingRide.getDriverGender() %></small>
-                      <% } %>
-                      <small class="ride-meta">Vehicle: <%= upcomingRide.getVehicleInfo() != null ? upcomingRide.getVehicleInfo() : "Not assigned" %></small>
-                      <small class="ride-meta">Departure: <%= formattedDeparture %></small>
-                      <% if (!formattedTime.isBlank()) { %>
-                        <small class="ride-meta">Time: <%= formattedTime %></small>
-                      <% } %>
-                      <small class="ride-meta">Seats: <%= upcomingRide.getSeats() %></small>
-                    </div>
-                    <div class="ride-actions request-actions">
-                      <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
-                        <input type="hidden" name="action" value="cancelUpcomingRide" />
-                        <input type="hidden" name="bookingId" value="<%= upcomingRide.getBookingId() %>" />
-                        <button type="submit" class="request-decline">Cancel Ride</button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              <% } %>
-            </div>
-          <% } %>
-        </section>
-
-        <section class="dashboard-section dashboard-passenger-section">
+        <section id="available-rides" class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
             <h3>Available Rides</h3>
-            <p>Search results will appear here once rides are available for your route.</p>
+            <p>Review open trips from verified drivers, then click Book on the ride you want.</p>
           </div>
 
           <div class="dashboard-search-filters">
@@ -252,6 +195,11 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
             <% } %>
           </div>
 
+          <p class="dashboard-request-ride-link">
+            Can't find a ride?
+            <a href="<%= cp %>/dashboard/passenger?action=showCreateBookingForm">Post a request for drivers</a>
+          </p>
+
           <script>
             const params = new URLSearchParams(window.location.search);
             if (params.get('searchDestination')) document.getElementById('rides-filter-text').value = params.get('searchDestination');
@@ -301,10 +249,69 @@ if (savedRoutes == null) savedRoutes = java.util.Collections.emptyList();
               textInput.addEventListener('input', filter);
               dateInput.addEventListener('input', filter);
               hoursInput.addEventListener('input', filter);
+              filter();
             })();
           </script>
 
         </section>
+
+        <section class="dashboard-section dashboard-passenger-section">
+          <div class="dashboard-section-heading">
+            <h3>Upcoming Rides</h3>
+            <p>Your pending or accepted rides are shown here. You can cancel before departure.</p>
+          </div>
+
+          <% if (upcomingRides.isEmpty()) { %>
+            <div class="dashboard-empty dashboard-empty--spaced">
+              <p>No upcoming rides yet.</p>
+            </div>
+          <% } else { %>
+            <div class="ride-list ride-list--spaced">
+              <% for (model.UpcomingRide upcomingRide : upcomingRides) {
+                   String rawDeparture = upcomingRide.getDepartureDate();
+                   String formattedDeparture = rawDeparture;
+                   String formattedTime = "";
+                   try {
+                     DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
+                     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("h:mm a");
+                     LocalDateTime dt = LocalDateTime.parse(rawDeparture, parser);
+                     formattedDeparture = dt.format(dateFormatter);
+                     formattedTime = dt.format(timeFormatter);
+                   } catch (Exception ignored) {
+                   }
+              %>
+                <div class="ride-item">
+                  <div class="ride-row">
+                    <div class="ride-info">
+                      <strong><%= upcomingRide.getOrigin() %> → <%= upcomingRide.getDestination() %></strong><br />
+                      <small class="ride-meta">Booking ID: #<%= upcomingRide.getBookingId() %></small>
+                      <small class="ride-meta">Status: <%= upcomingRide.getBookingStatus() %></small>
+                      <small class="ride-meta">Driver: <%= upcomingRide.getDriverName() != null ? upcomingRide.getDriverName() : "Not assigned" %></small>
+                      <% if (upcomingRide.getDriverGender() != null && !upcomingRide.getDriverGender().isBlank()) { %>
+                        <small class="ride-meta">Driver gender: <%= upcomingRide.getDriverGender() %></small>
+                      <% } %>
+                      <small class="ride-meta">Vehicle: <%= upcomingRide.getVehicleInfo() != null ? upcomingRide.getVehicleInfo() : "Not assigned" %></small>
+                      <small class="ride-meta">Departure: <%= formattedDeparture %></small>
+                      <% if (!formattedTime.isBlank()) { %>
+                        <small class="ride-meta">Time: <%= formattedTime %></small>
+                      <% } %>
+                      <small class="ride-meta">Seats: <%= upcomingRide.getSeats() %></small>
+                    </div>
+                    <div class="ride-actions request-actions">
+                      <form method="post" action="<%= cp %>/dashboard/passenger" class="dashboard-inline-form">
+                        <input type="hidden" name="action" value="cancelUpcomingRide" />
+                        <input type="hidden" name="bookingId" value="<%= upcomingRide.getBookingId() %>" />
+                        <button type="submit" class="request-decline">Cancel Ride</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+        </section>
+
       </div>
     </div>
   </div>
