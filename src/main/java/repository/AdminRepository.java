@@ -1,12 +1,55 @@
 package repository;
 
 import db.DBConnection;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class AdminRepository {
     private AdminRepository() {}
+
+    /**
+     * All rides (after status refresh), newest departure first, with host identity for the admin console.
+     *
+     * Each row: rideId, driverFirstName, driverLastName, driverEmail, origin, destination, departureDate, seatsLeft,
+     * status.
+     */
+    public static List<String[]> getAllRidesForAdmin() {
+        String sql =
+                "SELECT r.Ride_ID, u.First_Name, u.Last_Name, u.Email, r.Origin, r.Destination, " +
+                "       r.Departure_Date, r.Seats_Left, r.Status " +
+                "FROM Rides r " +
+                "JOIN Users u ON u.User_ID = r.Driver_ID " +
+                "ORDER BY r.Departure_Date DESC";
+
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            List<String[]> list = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new String[]{
+                            rs.getString("Ride_ID"),
+                            rs.getString("First_Name"),
+                            rs.getString("Last_Name"),
+                            rs.getString("Email"),
+                            rs.getString("Origin"),
+                            rs.getString("Destination"),
+                            rs.getString("Departure_Date"),
+                            rs.getString("Seats_Left"),
+                            rs.getString("Status")
+                    });
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("getAllRidesForAdmin failed", e);
+        }
+    }
 
     /** Returns all pending drivers with their user info. */
     public static List<String[]> getPendingDrivers() {
