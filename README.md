@@ -1,200 +1,125 @@
-# 🚗 Carpooling System Database
+# Carpooling System Database
 
-## Relational Schema & ERD Implementation
+## Overview
 
----
+Carpooling system database and web app built around a MySQL schema, with a Tomcat deployment path for local testing. The system supports:
 
-## 📌 Project Overview
+* Create and manage users (passengers and drivers)
+* Create, schedule and manage rides (assign drivers and vehicles)
+* Book rides as passengers
+* Manage vehicles
+* Store and retrieve reviews and notifications
+* Track activity and audit logs
+* Save frequently used routes for quick booking
 
-The system supports:
+## Database Schema
 
-* User management (Passengers & Drivers)
-* Ride scheduling and booking
-* Vehicle management
-* Reviews and notifications
-* Logging and saved routes
+The database includes 10 tables:
 
----
+1. Users — Application user accounts and basic profile information.
 
-## 🧱 Database Design Approach
+2. Passengers — Passenger profile data (extends `Users`).
 
-This project follows a **strict ERD → Relational Schema mapping**, meaning:
+3. Drivers — Driver profile and verification details (extends `Users`).
 
-* All **entities** are converted into tables
-* All **relationships** (including 1:N and M:N) are also represented as tables
-* No optimization (like merging relationships into foreign keys) was performed to stay consistent with academic requirements
+4. Vehicles — Driver-owned vehicle records.
 
----
+5. Rides — Scheduled ride offerings created by drivers.
 
-## 🗂️ Tables Overview
+6. Bookings — Passenger reservations for rides.
 
-### 🔹 Entity Tables (10)
+7. Reviews — Ratings and comments for rides/drivers.
 
-1. Users
-2. Passengers
-3. Drivers
-4. Vehicles
-5. Rides
-6. Bookings
-7. Reviews
-8. Notifications
-9. Saved_Routes
-10. Logs
+8. Notifications — Messages delivered to users.
 
----
+9. Saved_Routes — User-saved origin/destination pairs for quick reuse.
 
-### 🔹 Relationship Tables (9)
+10. Logs — Audit and activity records for user and system actions.
 
-1. Makes (User ↔ Booking)
-2. For (Booking ↔ Ride)
-3. Has (Booking ↔ Review)
-4. Owns (Driver ↔ Vehicle)
-5. Schedules (Driver ↔ Ride)
-6. Assigned (Vehicle ↔ Ride)
-7. Personalizes (User ↔ Notification)
-8. Records (User ↔ Logs)
-9. Saves (User ↔ Saved_Routes)
+Key design notes:
 
----
-
-## 🔗 Key Design Notes
-
-* **ISA Relationship**:
-
+* ISA relationship
   * `Passengers` and `Drivers` are subclasses of `Users`
   * They share the same primary key (`User_ID`)
-
-* **Composite Keys**:
-
-  * Relationship tables use **composite primary keys**
-  * Example:
-
-    ```
-    Owns(User_ID, License_Plate)
-    ```
-
-* **Data Integrity**:
-
+* Data integrity
   * Foreign keys enforce relationships between tables
-  * Each relationship table connects two entities
+  * `Bookings`, `Rides`, `Reviews`, `Notifications`, `Logs`, `Saved_Routes`, `Passengers`, `Drivers`, and `Vehicles` are linked through primary key and foreign key constraints
 
----
+## Tech Stack
 
-## 🛠️ Technologies Used
+* Java 21
+* Jakarta/Servlet-based web app with JSP views
+* Maven 3.8+
+* Apache Tomcat 9.x
+* MySQL 8.4 with JDBC via `mysql-connector-j`
+* MySQL Workbench for schema design and inspection
+* BCrypt for password hashing
 
-* MySQL Workbench
-* SQL (DDL & DML)
-* ER Modeling
+## Run Locally
 
----
+Follow these steps to prepare the database and run the web app locally.
 
-## ▶️ How to Run
+### Database (MySQL)
 
-1. Open **MySQL Workbench**
-2. Create or select your schema (e.g., `team7`)
-3. Run the provided SQL script:
+1. Open MySQL Workbench.
+2. Create or select a schema (example: `team7`).
+3. Run the SQL schema file to create tables and insert sample data.
 
-   * Creates all tables (19 total)
-   * Inserts sample data (10 rows per table)
-4. Refresh schema if tables do not appear
+Or open and run `sql/schema.sql` in MySQL Workbench.
 
----
+Refresh the schema in your client if the tables do not appear.
 
-## 🌐 Run Web App on External Tomcat
+### Environment variables
 
-This repository includes a Maven profile that builds and deploys the app to your local Tomcat automatically.
+The web app reads DB connection info from environment variables. Set these before starting Tomcat:
 
-### Prerequisites
+- For Tomcat, create `$CATALINA_HOME/bin/setenv.sh` with the exports
 
-1. Java 21
-2. Maven 3.8+
-3. Apache Tomcat 9.x
+```bash
+export DB_URL="jdbc:mysql://localhost:3306/team7"
+export DB_USER="root"
+export DB_PASSWORD="yourpassword"
+```
 
-### One-Time Setup
 
-Set your Tomcat home directory in your shell:
+### Web app (Tomcat)
+
+Prerequisites: Java 21, Maven 3.8+, Apache Tomcat 9.x
+
+Set your Tomcat home directory once in your shell:
 
 ```bash
 export CATALINA_HOME=/path/to/apache-tomcat-9.0.xx
 ```
 
-You can add this to your shell profile (for example, `~/.zshrc`) so it is always available.
+You can add this to your shell profile, for example `~/.zshrc`, so it is always available.
 
-### Build + Deploy
-
-From the project root, run:
+Build and deploy the WAR to the local Tomcat root with the provided Maven profile:
 
 ```bash
 mvn -Pdeploy-local-tomcat package
 ```
 
-This command will:
+This will build `target/ROOT.war` and copy it to `$CATALINA_HOME/webapps/ROOT.war`.
 
-1. Build `target/uniride.war`
-2. Copy it to `$CATALINA_HOME/webapps/ROOT.war`
-
-### Start Tomcat
+Start Tomcat:
 
 ```bash
 $CATALINA_HOME/bin/startup.sh
 ```
 
-Then open:
+Open the app at:
 
 * http://localhost:8080/
 
-### After Code Changes
-
-Run the same deploy command again to publish updates:
+After code changes, run the same Maven command to publish updates:
 
 ```bash
 mvn -Pdeploy-local-tomcat package
 ```
 
-### Stop Tomcat
+Stop Tomcat:
 
 ```bash
 $CATALINA_HOME/bin/shutdown.sh
 ```
-
----
-
-## 📊 Sample Data
-
-Each table contains **10 sample records** to:
-
-* Demonstrate relationships
-* Enable testing of queries
-* Simulate realistic system usage
-
----
-
-## 🎯 Features Supported
-
-* Create and manage users
-* Assign drivers to rides
-* Book rides as passengers
-* Store and retrieve reviews
-* Track notifications and logs
-* Save frequently used routes
-
----
-
-## ⚠️ Notes
-
-* This design prioritizes **clarity and ERD accuracy** over optimization
-* Some relationships could be simplified using foreign keys, but were kept as tables per assignment requirements
-
----
-
-## 👥 Team
-
-* Team 7
-
----
-
-## 📌 Conclusion
-
-This project demonstrates how to systematically convert an ERD into a relational database schema while preserving all entities and relationships. It serves as a strong foundation for building a full-stack carpooling application.
-
----
