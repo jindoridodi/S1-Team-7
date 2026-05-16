@@ -312,6 +312,9 @@ public final class RideRepository {
         String insertNotifSQL =
                 "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
 
+        boolean cancelled = false;
+        String logDescription = null;
+
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
             try {
@@ -365,9 +368,9 @@ public final class RideRepository {
                         }
                     }
                 }
-                LogRepository.log("RIDE_CANCELLED", null, Integer.parseInt(rideId), null, "Ride " + rideId + " cancelled by " + driverEmail);
+                logDescription = "Ride " + rideId + " cancelled by " + driverEmail;
                 c.commit();
-                return true;
+                cancelled = true;
             } catch (SQLException e) {
                 c.rollback();
                 throw e;
@@ -377,6 +380,12 @@ public final class RideRepository {
         } catch (SQLException e) {
             throw new RuntimeException("cancelRide failed", e);
         }
+
+        if (cancelled) {
+            LogRepository.log("RIDE_CANCELLED", null, Integer.parseInt(rideId), null, logDescription);
+        }
+
+        return cancelled;
     }
 
     /**
@@ -402,6 +411,9 @@ public final class RideRepository {
 
         String insertNotifSQL =
                 "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
+
+        boolean cancelled = false;
+        String logDescription = null;
 
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
@@ -460,10 +472,9 @@ public final class RideRepository {
                         }
                     }
                 }
-                int rideIdInt = Integer.parseInt(rideId);
-                LogRepository.log("RIDE_CANCELLED", null, rideIdInt, null, "Ride " + rideId + " cancelled by admin");
+                logDescription = "Ride " + rideId + " cancelled by admin";
                 c.commit();
-                return true;
+                cancelled = true;
             } catch (SQLException e) {
                 c.rollback();
                 throw e;
@@ -473,6 +484,12 @@ public final class RideRepository {
         } catch (SQLException e) {
             throw new RuntimeException("cancelRideAsAdmin failed", e);
         }
+
+        if (cancelled) {
+            LogRepository.log("RIDE_CANCELLED", null, Integer.parseInt(rideId), null, logDescription);
+        }
+
+        return cancelled;
     }
 }
 

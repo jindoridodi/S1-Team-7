@@ -354,6 +354,9 @@ public final class BookingRepository {
         /* Restores ride capacity when an accepted booking is cancelled. */
         String increaseSeatSql = "UPDATE Rides SET Seats_Left = Seats_Left + ? WHERE Ride_ID = ?";
 
+        boolean cancelled = false;
+        String logDescription = null;
+
         try (Connection c = DBConnection.get()) {
             c.setAutoCommit(false);
             RideStatusStore.refreshRideStatuses(c);
@@ -390,9 +393,9 @@ public final class BookingRepository {
 
                 try (PreparedStatement cancelStatement = c.prepareStatement(cancelSql)) {
                     cancelStatement.setInt(1, Integer.parseInt(bookingId));
-                    boolean cancelled = cancelStatement.executeUpdate() > 0;
+                    boolean cancelledNow = cancelStatement.executeUpdate() > 0;
                     c.commit();
-                    return cancelled;
+                    return cancelledNow;
                 } catch (SQLException e) {
                     c.rollback();
                     throw e;
@@ -419,12 +422,12 @@ public final class BookingRepository {
                 }
 
                 cancelStatement.setInt(1, Integer.parseInt(bookingId));
-                boolean cancelled = cancelStatement.executeUpdate() > 0;
+                boolean updated = cancelStatement.executeUpdate() > 0;
 
                 RideStatusStore.refreshRideStatuses(c);
-                LogRepository.log("BOOKING_CANCELLED", null, null, Integer.parseInt(bookingId), "Passenger " + passengerEmail + " cancelled booking " + bookingId);
+                logDescription = "Passenger " + passengerEmail + " cancelled booking " + bookingId;
                 c.commit();
-                return cancelled;
+                cancelled = updated;
             } catch (SQLException e) {
                 c.rollback();
                 throw e;
@@ -434,6 +437,12 @@ public final class BookingRepository {
         } catch (SQLException e) {
             throw new RuntimeException("cancelUpcomingRideForPassenger failed", e);
         }
+
+        if (cancelled) {
+            LogRepository.log("BOOKING_CANCELLED", null, null, Integer.parseInt(bookingId), logDescription);
+        }
+
+        return cancelled;
     }
 
     /**
