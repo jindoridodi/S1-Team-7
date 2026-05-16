@@ -87,9 +87,8 @@
 }
 
 .dashboard-role-switch-ui {
-  cursor: default;
-  pointer-events: none;
   font-family: inherit;
+  cursor: pointer;
 }
 
 .dashboard-inline-form {
@@ -122,6 +121,12 @@
   flex-direction: column;
   width: 100%;
   gap: 0;
+}
+
+/* Ensure dashboard subpages that don't use the hero block start lower
+   so they visually line up with pages that include the hero. */
+.dashboard-main-inner > .dashboard-section:first-of-type {
+  padding-top: 6rem; /* slightly larger than the default section padding */
 }
 
 .settings-full {
@@ -441,8 +446,36 @@ a.ride-request-link:hover {
 
 .dashboard-search-form {
   display: grid;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-lg) var(--spacing-2xl);
+  align-items: start;
+  width: 100%;
+  max-width: none;
+  margin: var(--spacing-lg) 0 var(--spacing-xl);
+}
+
+.dashboard-search-form .login-input {
+  width: 100%;
+}
+
+.dashboard-search-form .login-submit {
+  grid-column: 1 / -1;
+  width: auto;
+  min-width: 180px;
+  justify-self: center;
+  padding: var(--spacing-md) var(--spacing-xl);
+}
+
+@media (max-width: 720px) {
+  .dashboard-search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-search-form .login-submit {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
 }
 
 .request-approve,
@@ -508,7 +541,7 @@ a.ride-request-link:hover {
 }
 
 .dashboard-actions .login-submit {
-  width: auto;
+  flex: 1 1 0;
   min-width: 150px;
   margin: 0;
 }
@@ -689,6 +722,17 @@ a.ride-request-link:hover {
   margin-bottom: 0;
 }
 
+/* Ensure the vehicle-empty message is displayed in red */
+.booking-form .form-error {
+  color: var(--danger-color);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Allow form groups to span full width inside the 2-column booking grid */
+.booking-form .form-group.full {
+  grid-column: 1 / -1;
+}
+
 .booking-form .rule,
 .booking-form .booking-submit {
   grid-column: 1 / -1;
@@ -702,6 +746,19 @@ a.ride-request-link:hover {
   .booking-form {
     grid-template-columns: 1fr;
   }
+}
+/* Paired fields row inside booking form */
+.booking-row {
+  display: flex;
+  gap: var(--spacing-2xl);
+  align-items: flex-start;
+}
+.booking-row .field { flex: 1; display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.booking-row .field--small { width: auto; flex: 1; }
+
+@media (max-width: 720px) {
+  .booking-row { flex-direction: column; }
+  .booking-row .field--small { width: 100%; }
 }
 .vehicle-row {
   display: flex;

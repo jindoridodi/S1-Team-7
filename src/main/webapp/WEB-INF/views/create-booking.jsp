@@ -21,9 +21,10 @@ User currentUser = (User) session.getAttribute("currentUser");
             <h1 class="logo"><a href="<%= cp %>/home">Uni<span class="highlight">Ride</span></a></h1>
             <div class="nav-links dashboard-nav-links">
                 <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Passenger" %></span>
-                <button type="button" class="nav-btn-secondary dashboard-role-switch-ui" aria-disabled="true" tabindex="-1">Switch to driver</button>
-                <a href="<%= cp %>/dashboard/passenger?action=searchRides" class="nav-btn-secondary">Search rides</a>
-                <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Dashboard</a>
+                <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Back to Dashboard</a>
+                <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
+                    <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
+                </form>
             </div>
         </nav>
 

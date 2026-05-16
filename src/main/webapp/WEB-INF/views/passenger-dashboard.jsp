@@ -35,7 +35,7 @@ String errorMessage = (String) request.getAttribute("error");
       <div class="nav-links dashboard-nav-links">
         <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Passenger" %></span>
         <% if (driverVerified) { %>
-          <button type="button" class="nav-btn-secondary dashboard-role-switch-ui" aria-disabled="true" tabindex="-1">Switch to driver</button>
+          <a href="<%= cp %>/dashboard/driver" class="nav-btn-secondary dashboard-role-switch-ui">Switch to Driver</a>
         <% } %>
         <a href="<%= cp %>/settings" class="nav-btn-primary dashboard-settings">Settings</a>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">

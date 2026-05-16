@@ -39,8 +39,7 @@ String msg = (String) request.getAttribute("msg");
       <h1 class="logo"><a href="<%= cp %>/home">Uni<span class="highlight">Ride</span></a></h1>
       <div class="nav-links dashboard-nav-links">
         <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Passenger" %></span>
-        <button type="button" class="nav-btn-secondary dashboard-role-switch-ui" aria-disabled="true" tabindex="-1">Switch to driver</button>
-        <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Dashboard</a>
+        <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Back to Dashboard</a>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
           <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
         </form>
@@ -57,18 +56,33 @@ String msg = (String) request.getAttribute("msg");
           <p style="color:#f87171;text-align:center;"><%= request.getAttribute("error") %></p>
         <% } %>
 
-        <section class="dashboard-section dashboard-passenger-section">
+        <section class="dashboard-section">
           <div class="dashboard-section-heading">
             <h3>Search rides</h3>
             <p>Find open trips posted by drivers. Use partial place names (e.g. <em>SJSU</em>, <em>Diridon</em>), any word order, or filter by departure date — exact spelling of the full address is not required.</p>
           </div>
 
-          <form method="get" action="<%= cp %>/dashboard/passenger" class="dashboard-form-grid dashboard-search-form">
+          <form method="get" action="<%= cp %>/dashboard/passenger" class="settings-form booking-form">
             <input type="hidden" name="action" value="searchRides" />
-            <input type="text" name="searchOrigin" class="login-input" placeholder="From (origin) — keywords OK" value="<%= searchOrigin %>" />
-            <input type="text" name="searchDestination" class="login-input" placeholder="To (destination) — keywords OK" value="<%= searchDestination %>" />
-            <input type="date" name="searchDate" class="login-input" title="Filter rides departing on this calendar date" value="<%= searchDate %>" />
-            <button type="submit" class="login-submit action-find u-w-100">Search rides</button>
+
+            <div class="form-group">
+              <label><strong>Pickup location (origin)</strong></label>
+              <input type="text" name="searchOrigin" class="login-input" placeholder="From (origin) — keywords OK" value="<%= searchOrigin %>" />
+            </div>
+
+            <div class="form-group">
+              <label><strong>Drop-off location (destination)</strong></label>
+              <input type="text" name="searchDestination" class="login-input" placeholder="To (destination) — keywords OK" value="<%= searchDestination %>" />
+            </div>
+
+            <div class="form-group">
+              <label><strong>Departure date (optional)</strong></label>
+              <input type="date" name="searchDate" class="login-input" title="Filter rides departing on this calendar date" value="<%= searchDate %>" />
+            </div>
+
+            <hr class="rule">
+
+            <button type="submit" class="action-find u-w-100 u-text-center booking-submit">Search rides</button>
           </form>
         </section>
 

@@ -39,7 +39,7 @@ if (driverVehicles == null) {
       <div class="nav-links dashboard-nav-links">
         <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Driver" %></span>
         <% if (driverVerified) { %>
-          <button type="button" class="nav-btn-secondary dashboard-role-switch-ui" aria-disabled="true" tabindex="-1">Switch to passenger</button>
+          <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary dashboard-role-switch-ui">Switch to Passenger</a>
         <% } %>
         <a href="<%= cp %>/settings" class="nav-btn-primary dashboard-settings">Settings</a>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
