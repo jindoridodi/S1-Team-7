@@ -1,4 +1,4 @@
-# Carpooling System Database
+# UniRide
 
 ## Overview
 
