@@ -32,6 +32,25 @@ String msg = (String) request.getAttribute("msg");
       background: rgba(245, 166, 35, 0.05);
     }
   </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var form = document.querySelector('.booking-form');
+      if (!form) return;
+
+      var timer = null;
+      var scheduleSubmit = function () {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(function () {
+          form.requestSubmit();
+        }, 250);
+      };
+
+      form.querySelectorAll('input').forEach(function (input) {
+        input.addEventListener('input', scheduleSubmit);
+        input.addEventListener('change', scheduleSubmit);
+      });
+    });
+  </script>
 </head>
 <body>
   <div class="login-page dashboard-page">
@@ -81,8 +100,6 @@ String msg = (String) request.getAttribute("msg");
             </div>
 
             <hr class="rule">
-
-            <button type="submit" class="action-find u-w-100 u-text-center booking-submit">Search rides</button>
           </form>
         </section>
 
@@ -90,7 +107,9 @@ String msg = (String) request.getAttribute("msg");
           <section class="dashboard-section dashboard-passenger-section">
             <div class="dashboard-section-heading">
               <h3>Search results</h3>
-              <p><%= availableRides.isEmpty() ? "No matching rides right now." : availableRides.size() + " ride(s) match your search." %></p>
+              <p><%= (searchOrigin.isBlank() && searchDestination.isBlank() && searchDate.isBlank()) ?
+                (availableRides.isEmpty() ? "No open rides are available right now." : "Showing all available rides.") :
+                (availableRides.isEmpty() ? "No matching rides right now." : availableRides.size() + " ride(s) match your search.") %></p>
             </div>
 
             <% if (availableRides.isEmpty()) { %>

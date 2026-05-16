@@ -198,8 +198,6 @@ public class PassengerDashboard extends HttpServlet {
         String destinationFilter = safe(req.getParameter("searchDestination"));
         String dateFilter = safe(req.getParameter("searchDate"));
 
-        boolean searchPerformed = !originFilter.isBlank() || !destinationFilter.isBlank() || !dateFilter.isBlank();
-
         List<Ride> filteredRides = filterRides(
                 RideRepository.getAvailableRides(),
                 originFilter,
@@ -209,7 +207,7 @@ public class PassengerDashboard extends HttpServlet {
         req.setAttribute("searchOrigin", originFilter);
         req.setAttribute("searchDestination", destinationFilter);
         req.setAttribute("searchDate", dateFilter);
-        req.setAttribute("searchPerformed", searchPerformed);
+        req.setAttribute("searchPerformed", true);
         req.setAttribute("availableRides", filteredRides);
         req.setAttribute("savedRoutes", SavedRouteRepository.getRoutesForUser(user.getEmail()));
         req.setAttribute("msg", safe(req.getParameter("msg")));
