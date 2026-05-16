@@ -33,6 +33,7 @@ public class Settings extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
+        putDashboardPath(req, user);
         req.getRequestDispatcher("/WEB-INF/views/settings.jsp").forward(req, resp);
     }
 
@@ -56,6 +57,7 @@ public class Settings extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
+        putDashboardPath(req, user);
 
         // Trim user input up front so validation logic sees the same values the browser submitted.
         String currentPassword = safe(req.getParameter("currentPassword"));
@@ -93,6 +95,7 @@ public class Settings extends HttpServlet {
 
         // Preserve the entered state and return the JSP when validation fails.
         if (hasErrors(req)) {
+            putDashboardPath(req, user);
             req.getRequestDispatcher("/WEB-INF/views/settings.jsp").forward(req, resp);
             return;
         }
@@ -104,10 +107,14 @@ public class Settings extends HttpServlet {
             User updated = UserRepository.authenticate(user.getEmail(), newPassword);
             if (updated != null) {
                 req.getSession(true).setAttribute("currentUser", updated);
+                putDashboardPath(req, updated);
+            } else {
+                putDashboardPath(req, user);
             }
             req.getRequestDispatcher("/WEB-INF/views/settings.jsp").forward(req, resp);
         } else {
             req.setAttribute("errorNewPassword", "Failed to update password.");
+            putDashboardPath(req, user);
             req.getRequestDispatcher("/WEB-INF/views/settings.jsp").forward(req, resp);
         }
     }
@@ -133,5 +140,11 @@ public class Settings extends HttpServlet {
         return req.getAttribute("errorCurrentPassword") != null ||
                req.getAttribute("errorNewPassword") != null ||
                req.getAttribute("errorConfirmPassword") != null;
+    }
+
+    private static void putDashboardPath(HttpServletRequest req, User user) {
+        req.setAttribute(
+                "dashboardPath",
+                req.getContextPath() + UserRepository.primaryDashboardPathRelative(user));
     }
 }

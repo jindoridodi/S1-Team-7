@@ -4,14 +4,19 @@
 <%@ page import="java.time.format.DateTimeFormatter" %>
 <%@ page import="model.PassengerRequest" %>
 <%@ page import="model.User" %>
+<%@ page import="model.Vehicle" %>
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
-boolean pending = request.getAttribute("pendingVerification") != null;
-boolean canSwapDashboard = currentUser != null && currentUser.hasRole("driver") && currentUser.hasRole("passenger");
+boolean driverVerified = Boolean.TRUE.equals(request.getAttribute("driverVerified"));
 List<PassengerRequest> passengerRequests = (List<PassengerRequest>) request.getAttribute("passengerRequests");
 if (passengerRequests == null) {
   passengerRequests = java.util.Collections.emptyList();
+}
+@SuppressWarnings("unchecked")
+List<Vehicle> driverVehicles = (List<Vehicle>) request.getAttribute("driverVehicles");
+if (driverVehicles == null) {
+  driverVehicles = java.util.Collections.emptyList();
 }
 %>
 <!DOCTYPE html>
@@ -33,10 +38,10 @@ if (passengerRequests == null) {
       <h1 class="logo"><a href="<%= cp %>/home">Uni<span class="highlight">Ride</span></a></h1>
       <div class="nav-links dashboard-nav-links">
         <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Driver" %></span>
-        <a href="<%= cp %>/settings" class="nav-btn-primary dashboard-settings">Settings</a>
-        <% if (canSwapDashboard) { %>
-          <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Switch to Passenger</a>
+        <% if (driverVerified) { %>
+          <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary dashboard-role-switch-ui">Switch to Passenger</a>
         <% } %>
+        <a href="<%= cp %>/settings" class="nav-btn-primary dashboard-settings">Settings</a>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
           <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
         </form>
@@ -51,26 +56,6 @@ if (passengerRequests == null) {
     <div class="dashboard-main">
       <div class="dashboard-main-inner">
 
-        <% if (pending) { %>
-          <%-- Pending verification screen --%>
-          <div class="login-shell dashboard-card dashboard-pending">
-            <h3>Account Pending Verification</h3>
-            <p class="dashboard-pending-lead">
-              Your driver account is currently under review. Once verified by an admin,
-              you will have full access to the driver dashboard.
-            </p>
-            <p class="dashboard-pending-note">
-              In the meantime, you can use UniRide as a passenger.
-            </p>
-            <div class="dashboard-pending-cta">
-              <a href="<%= cp %>/dashboard/passenger" class="login-submit u-inline-flex-center">
-                Go to Passenger Dashboard
-              </a>
-            </div>
-          </div>
-
-        <% } else { %>
-          <%-- Full driver dashboard --%>
           <section class="dashboard-hero dashboard-section">
             <div class="dashboard-hero-copy">
               <span class="campus-tag">Driver Hub</span>
@@ -86,14 +71,16 @@ if (passengerRequests == null) {
               <a href="<%= cp %>/dashboard/driver?action=showVehicles" class="login-submit action-requests u-inline-flex-center">
                 My Vehicles
               </a>
-              <button class="login-submit action-earnings" type="button">My Earnings</button>
+              <a href="<%= cp %>/dashboard/driver?action=showRideHistory" class="login-submit action-bookings u-inline-flex-center">
+                Ride History
+              </a>
             </div>
           </section>
 
           <section class="dashboard-section dashboard-vehicle-card">
             <div class="dashboard-section-heading">
               <h3>My Rides</h3>
-              <p>All rides you have created. Cancel a ride to remove all passengers and notify them.</p>
+              <p>Upcoming rides you are hosting. Cancel a ride to remove all passengers and notify them. Past trips are in Ride History.</p>
             </div>
 
             <%
@@ -103,7 +90,7 @@ if (passengerRequests == null) {
 
             <% if (driverRides.isEmpty()) { %>
               <div class="dashboard-empty">
-                <p>You haven't created any rides yet.</p>
+                <p>No upcoming rides. Create one or check Ride History for past trips.</p>
               </div>
             <% } else { %>
               <div class="ride-list">
@@ -199,13 +186,27 @@ if (passengerRequests == null) {
                         <small class="ride-meta">Status: <%= requestRow.getBookingStatus() %></small>
                       </div>
                       <% if ("pending".equalsIgnoreCase(requestRow.getBookingStatus())) { %>
-                        <div class="ride-actions request-actions">
-                          <form method="post" action="<%= cp %>/dashboard/driver" class="dashboard-inline-form">
-                            <input type="hidden" name="action" value="processPassengerRequest" />
-                            <input type="hidden" name="bookingId" value="<%= requestRow.getBookingId() %>" />
-                            <input type="hidden" name="decision" value="accept" />
-                            <button type="submit" class="request-approve">Accept Request</button>
-                          </form>
+                        <div class="ride-actions request-actions request-accept-stack">
+                          <% if (driverVehicles.isEmpty()) { %>
+                            <p class="ride-meta ride-meta--warn">Add a vehicle under My Vehicles to accept this request.</p>
+                          <% } else { %>
+                            <form method="post" action="<%= cp %>/dashboard/driver" class="dashboard-inline-form request-accept-form">
+                              <input type="hidden" name="action" value="processPassengerRequest" />
+                              <input type="hidden" name="bookingId" value="<%= requestRow.getBookingId() %>" />
+                              <input type="hidden" name="decision" value="accept" />
+                              <label class="request-vehicle-label">
+                                <span class="request-vehicle-label-text">Vehicle for this ride</span>
+                                <select name="vehicleId" class="login-input request-vehicle-select" required>
+                                  <% for (Vehicle v : driverVehicles) { %>
+                                    <option value="<%= v.getId() %>">
+                                      <%= v.getColor() %> <%= v.getMake() %> <%= v.getModel() %> — plate <%= v.getPlate() %> (<%= v.getTotalSeats() %> seats)
+                                    </option>
+                                  <% } %>
+                                </select>
+                              </label>
+                              <button type="submit" class="request-approve">Accept Request</button>
+                            </form>
+                          <% } %>
                         </div>
                       <% } %>
                     </div>
@@ -215,7 +216,6 @@ if (passengerRequests == null) {
             <% } %>
 
           </section>
-        <% } %>
 
       </div>
     </div>

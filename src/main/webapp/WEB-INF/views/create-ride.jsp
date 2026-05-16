@@ -28,24 +28,27 @@ if (vehicles == null) {
             <div class="nav-links dashboard-nav-links">
                 <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Driver" %></span>
                 <a href="<%= cp %>/dashboard/driver" class="nav-btn-secondary">Back to Dashboard</a>
+                <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
+                    <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
+                </form>
             </div>
         </nav>
 
         <div class="dashboard-main">
-            <div class="dashboard-main-inner">
                 <section class="dashboard-section">
                     <div class="dashboard-section-heading">
-                        <h3>Offer a New Ride</h3>
-                        <p>Fill out the details below to share your journey with other SJSU students.</p>
+                        <h3>Offer a Ride</h3>
+                        <p>
+                            Select which vehicle you'll use and provide the trip details below. Drivers use this form to post a ride
+                            so passengers can find and request seats. If you don't have a vehicle yet, add one first.
+                        </p>
                     </div>
-
                     <form method="post" action="<%= cp %>/dashboard/driver" class="settings-form booking-form">
                         <input type="hidden" name="action" value="processCreateRide">
 
-                        <div class="form-group">
-                            <label><strong>Vehicle</strong></label>
+                        <div class="form-group full">
                             <% if (vehicles.isEmpty()) { %>
-                                <p class="ride-meta" style="color: #b45309;">Add a vehicle first before creating a ride.</p>
+                                <p class="form-error">Add a vehicle first before creating a ride.</p>
                             <% } else { %>
                                 <select name="vehicleId" class="login-input" required>
                                     <option value="" disabled selected>Select a vehicle</option>
@@ -56,24 +59,30 @@ if (vehicles == null) {
                             <% } %>
                         </div>
 
-                        <div class="form-group">
-                            <label><strong>Pickup Location (Origin)</strong></label>
-                            <input type="text" name="origin" class="login-input" placeholder="e.g. King Library" required>
+                        <div class="form-group full">
+                            <div class="booking-row">
+                                <div class="field">
+                                    <label><strong>Pickup Location (Origin)</strong></label>
+                                    <input type="text" name="origin" class="login-input" placeholder="e.g. King Library" required>
+                                </div>
+                                <div class="field">
+                                    <label><strong>Drop-off Location (Destination)</strong></label>
+                                    <input type="text" name="destination" class="login-input" placeholder="e.g. San Jose Diridon" required>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label><strong>Drop-off Location (Destination)</strong></label>
-                            <input type="text" name="destination" class="login-input" placeholder="e.g. San Jose Diridon" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label><strong>Departure Date & Time</strong></label>
-                            <input type="datetime-local" name="departureDate" class="login-input" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label><strong>Available Seats</strong></label>
-                            <input type="number" name="seatsLeft" class="login-input" min="1" max="10" placeholder="Number of seats" required>
+                        <div class="form-group full">
+                            <div class="booking-row">
+                                <div class="field">
+                                    <label><strong>Departure Date & Time</strong></label>
+                                    <input type="datetime-local" name="departureDate" class="login-input" required>
+                                </div>
+                                <div class="field field--small">
+                                    <label><strong>Available Seats</strong></label>
+                                    <input type="number" name="seatsLeft" class="login-input" min="1" max="10" placeholder="Number of seats" required>
+                                </div>
+                            </div>
                         </div>
 
                         <hr class="rule">

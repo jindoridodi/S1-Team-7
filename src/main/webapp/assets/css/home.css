@@ -158,6 +158,120 @@
   text-align: left;
 }
 
+/** Landing-page sign-in card (hero) */
+.home-auth-card {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(229, 168, 35, 0.12);
+  background:
+    linear-gradient(145deg, rgba(14, 22, 41, 0.97), rgba(8, 14, 28, 0.99)),
+    var(--bg-card);
+}
+
+.home-auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sjsu-blue), var(--sjsu-gold));
+  opacity: 0.95;
+}
+
+.home-auth-card-header {
+  position: relative;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.home-auth-eyebrow {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sjsu-gold);
+  margin-bottom: var(--spacing-sm);
+}
+
+.home-auth-title {
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+}
+
+.home-login-form .input-group:last-of-type input {
+  margin-bottom: var(--spacing-xl);
+}
+
+.home-login-form .input-group input:focus {
+  outline: none;
+  border-color: var(--sjsu-gold);
+  box-shadow: 0 0 0 3px rgba(229, 168, 35, 0.18);
+}
+
+.home-auth-submit {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  margin-top: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--sjsu-gold) 0%, #c9890f 100%);
+  color: var(--bg-dark);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-extrabold);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), filter var(--transition-base);
+}
+
+.home-auth-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(229, 168, 35, 0.28);
+  filter: brightness(1.05);
+}
+
+.home-auth-admin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(229, 168, 35, 0.45);
+  background: rgba(0, 85, 162, 0.12);
+  color: var(--text-main);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: border-color var(--transition-base), background var(--transition-base), color var(--transition-base);
+}
+
+.home-auth-admin-btn:hover {
+  border-color: var(--sjsu-gold);
+  background: rgba(229, 168, 35, 0.1);
+  color: var(--sjsu-gold);
+}
+
+.home-auth-admin-btn--outline {
+  margin-top: var(--spacing-md);
+  background: transparent;
+  border-color: var(--border-color);
+}
+
+.home-auth-admin-btn--outline:hover {
+  border-color: var(--sjsu-gold);
+}
+
+.home-login-signup {
+  margin-top: var(--spacing-2xl);
+}
+
 .card-label {
   text-transform: uppercase;
   font-size: var(--font-size-xs);
@@ -217,6 +331,35 @@
 .search-submit:hover {
   border-color: var(--sjsu-gold);
   color: var(--sjsu-gold);
+}
+
+.home-login-lead {
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-xl);
+}
+
+.home-login-signup {
+  margin: var(--spacing-lg) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.home-login-signup a {
+  color: var(--sjsu-gold);
+  text-decoration: none;
+}
+
+.home-login-signup a:hover {
+  text-decoration: underline;
+}
+
+.home-login-dashboard {
+  display: block;
+  text-align: center;
+  text-decoration: none;
 }
 
 .stats-bar {
@@ -302,21 +445,6 @@
   line-height: 1.6;
 }
 
-.home-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-4xl) 10%;
-  border-top: 1px solid var(--border-color);
-  color: var(--text-dim);
-  font-size: var(--font-size-sm);
-}
-
-.footer-links {
-  display: flex;
-  gap: var(--spacing-2xl);
-}
-
 @media (max-width: 900px) {
   .hero-wrapper {
     flex-direction: column;
@@ -334,11 +462,6 @@
 
   .features-grid {
     grid-template-columns: 1fr;
-  }
-
-  .home-footer {
-    flex-direction: column;
-    gap: var(--spacing-md);
   }
 
   .features-section {

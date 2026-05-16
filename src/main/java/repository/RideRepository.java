@@ -32,7 +32,8 @@ public final class RideRepository {
             String sql =
                     "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
                     "       CONCAT(u.First_Name, ' ', LEFT(u.Last_Name, 1), '.') AS Driver_Name, " +
-                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info, " +
+                    "       u.Gender AS Driver_Gender " +
                     "FROM Rides r " +
                     "LEFT JOIN Users u ON u.User_ID = r.Driver_ID " +
                     "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
@@ -55,13 +56,57 @@ public final class RideRepository {
                             rs.getInt("Seats_Left"),
                             rs.getString("Status"),
                             rs.getString("Driver_Name"),
-                            rs.getString("Vehicle_Info")
+                            rs.getString("Vehicle_Info"),
+                            rs.getString("Driver_Gender")
                     ));
                 }
             }
             return list;
         } catch (SQLException e) {
             throw new RuntimeException("getAvailableRides failed", e);
+        }
+    }
+
+    /**
+     * Returns a ride for the passenger seat-request flow, or null if the ride does not exist.
+     * Does not filter on open status or remaining seats so passengers can always submit a request.
+     */
+    public static Ride getRideByIdForSeatRequest(String rideId) {
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            String sql =
+                    "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
+                    "       CONCAT(u.First_Name, ' ', LEFT(u.Last_Name, 1), '.') AS Driver_Name, " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info, " +
+                    "       u.Gender AS Driver_Gender " +
+                    "FROM Rides r " +
+                    "LEFT JOIN Users u ON u.User_ID = r.Driver_ID " +
+                    "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
+                    "WHERE r.Ride_ID = ? " +
+                    "  AND COALESCE(r.Status, '') NOT IN ('cancelled', 'completed') " +
+                    "LIMIT 1";
+
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setInt(1, Integer.parseInt(rideId));
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    return new Ride(
+                            String.valueOf(rs.getInt("Ride_ID")),
+                            rs.getString("Origin"),
+                            rs.getString("Destination"),
+                            rs.getString("Departure_Date"),
+                            rs.getInt("Seats_Left"),
+                            rs.getString("Status"),
+                            rs.getString("Driver_Name"),
+                            rs.getString("Vehicle_Info"),
+                            rs.getString("Driver_Gender")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("getRideByIdForSeatRequest failed", e);
         }
     }
 
@@ -91,7 +136,7 @@ public final class RideRepository {
                                 rs.getString("Departure_Date"),
                                 rs.getInt("Seats_Left"),
                                 rs.getString("Status"),
-                                null, null
+                                null, null, null
                         ));
                     }
                 }
@@ -99,6 +144,86 @@ public final class RideRepository {
             return list;
         } catch (SQLException e) {
             throw new RuntimeException("getRidesForDriver failed", e);
+        }
+    }
+
+    /**
+     * Rides the driver can still manage: not yet completed/cancelled and departure still in the future
+     * (after {@link RideStatusStore#refreshRideStatuses}).
+     */
+    public static List<Ride> getActiveRidesForDriver(String driverEmail) {
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            String sql =
+                    "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status " +
+                    "FROM Rides r " +
+                    "JOIN Users u ON u.User_ID = r.Driver_ID " +
+                    "WHERE u.Email = ? AND u.Account_Status = 'active' " +
+                    "  AND r.Status NOT IN ('completed', 'cancelled') " +
+                    "  AND r.Departure_Date >= NOW() " +
+                    "ORDER BY r.Departure_Date ASC";
+
+            List<Ride> list = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, driverEmail);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new Ride(
+                                String.valueOf(rs.getInt("Ride_ID")),
+                                rs.getString("Origin"),
+                                rs.getString("Destination"),
+                                rs.getString("Departure_Date"),
+                                rs.getInt("Seats_Left"),
+                                rs.getString("Status"),
+                                null, null, null
+                        ));
+                    }
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("getActiveRidesForDriver failed", e);
+        }
+    }
+
+    /**
+     * Past rides for the driver: completed, cancelled, or departure time in the past.
+     */
+    public static List<Ride> getRideHistoryForDriver(String driverEmail) {
+        try (Connection c = DBConnection.get()) {
+            RideStatusStore.refreshRideStatuses(c);
+            String sql =
+                    "SELECT r.Ride_ID, r.Origin, r.Destination, r.Departure_Date, r.Seats_Left, r.Status, " +
+                    "       CONCAT(v.Color, ' ', v.Make, ' ', v.Model, ' (Plate ', v.License_Plate, ')') AS Vehicle_Info " +
+                    "FROM Rides r " +
+                    "JOIN Users u ON u.User_ID = r.Driver_ID " +
+                    "LEFT JOIN Vehicles v ON v.Vehicle_ID = r.Vehicle_ID " +
+                    "WHERE u.Email = ? AND u.Account_Status = 'active' " +
+                    "  AND (r.Status IN ('completed', 'cancelled') OR r.Departure_Date < NOW()) " +
+                    "ORDER BY r.Departure_Date DESC";
+
+            List<Ride> list = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, driverEmail);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new Ride(
+                                String.valueOf(rs.getInt("Ride_ID")),
+                                rs.getString("Origin"),
+                                rs.getString("Destination"),
+                                rs.getString("Departure_Date"),
+                                rs.getInt("Seats_Left"),
+                                rs.getString("Status"),
+                                null,
+                                rs.getString("Vehicle_Info"),
+                                null
+                        ));
+                    }
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("getRideHistoryForDriver failed", e);
         }
     }
 
@@ -123,7 +248,7 @@ public final class RideRepository {
                     "INSERT INTO Rides (Driver_ID, Vehicle_ID, Origin, Destination, Departure_Date, Seats_Left, Status) " +
                     "SELECT d.User_ID, v.Vehicle_ID, ?, ?, ?, ?, 'open' " +
                     "FROM Users u " +
-                    "JOIN Drivers d ON d.User_ID = u.User_ID " +
+                    "JOIN Drivers d ON d.User_ID = u.User_ID AND d.Verification_Status = 'verified' " +
                     "JOIN Vehicles v ON v.Vehicle_ID = ? AND v.Driver_ID = d.User_ID AND v.Vehicle_Status = 'active' " +
                     "WHERE u.Email = ? AND u.Account_Status = 'active'";
 
@@ -251,6 +376,102 @@ public final class RideRepository {
             }
         } catch (SQLException e) {
             throw new RuntimeException("cancelRide failed", e);
+        }
+    }
+
+    /**
+     * Admin cancellation: completes any pending bookings and marks the ride cancelled.
+     * Refreshes ride statuses first so time-derived {@code completed} rides cannot be reopened.
+     */
+    public static boolean cancelRideAsAdmin(String rideId) {
+        String verifySQL =
+                "SELECT r.Status, r.Origin, r.Destination " +
+                "FROM Rides r " +
+                "WHERE r.Ride_ID = ? FOR UPDATE";
+
+        String getPassengersSQL =
+                "SELECT b.User_ID " +
+                "FROM Bookings b " +
+                "WHERE b.Ride_ID = ? AND b.Status IN ('pending', 'accepted')";
+
+        String cancelBookingsSQL =
+                "UPDATE Bookings SET Status = 'cancelled' WHERE Ride_ID = ? AND Status IN ('pending', 'accepted')";
+
+        String cancelRideSQL =
+                "UPDATE Rides SET Status = 'cancelled' WHERE Ride_ID = ?";
+
+        String insertNotifSQL =
+                "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
+
+        try (Connection c = DBConnection.get()) {
+            c.setAutoCommit(false);
+            try {
+                RideStatusStore.refreshRideStatuses(c);
+
+                String rideStatus;
+                String origin;
+                String destination;
+                try (PreparedStatement ps = c.prepareStatement(verifySQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            c.rollback();
+                            return false;
+                        }
+                        rideStatus = rs.getString("Status");
+                        origin = rs.getString("Origin");
+                        destination = rs.getString("Destination");
+                    }
+                }
+
+                if ("cancelled".equalsIgnoreCase(rideStatus) || "completed".equalsIgnoreCase(rideStatus)) {
+                    c.rollback();
+                    return false;
+                }
+
+                List<Integer> passengerIds = new ArrayList<>();
+                try (PreparedStatement ps = c.prepareStatement(getPassengersSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            passengerIds.add(rs.getInt("User_ID"));
+                        }
+                    }
+                }
+
+                try (PreparedStatement ps = c.prepareStatement(cancelBookingsSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = c.prepareStatement(cancelRideSQL)) {
+                    ps.setInt(1, Integer.parseInt(rideId));
+                    ps.executeUpdate();
+                }
+
+                if (!passengerIds.isEmpty()) {
+                    String message = "Your ride from " + origin + " to " + destination
+                            + " has been cancelled by UniRide administration.";
+                    try (PreparedStatement psNotif = c.prepareStatement(insertNotifSQL)) {
+                        for (int userId : passengerIds) {
+                            psNotif.setInt(1, userId);
+                            psNotif.setString(2, message);
+                            psNotif.executeUpdate();
+                        }
+                    }
+                }
+                int rideIdInt = Integer.parseInt(rideId);
+                LogRepository.log("RIDE_CANCELLED", null, rideIdInt, null, "Ride " + rideId + " cancelled by admin");
+                c.commit();
+                return true;
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("cancelRideAsAdmin failed", e);
         }
     }
 }

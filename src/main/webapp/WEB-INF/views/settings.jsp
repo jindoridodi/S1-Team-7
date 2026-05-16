@@ -5,10 +5,8 @@
 String cp = request.getContextPath();
 // The authenticated user is stored in the session by the login flow and reused here for display only.
 User currentUser = (User) session.getAttribute("currentUser");
-String dashboardPath = cp + "/dashboard/passenger";
-if (currentUser != null && currentUser.hasRole("driver")) {
-  dashboardPath = cp + "/dashboard/driver";
-}
+Object dashboardAttr = request.getAttribute("dashboardPath");
+String dashboardPath = dashboardAttr instanceof String ? (String) dashboardAttr : (cp + "/dashboard/passenger");
 %>
 <!DOCTYPE html>
 <html lang="en">

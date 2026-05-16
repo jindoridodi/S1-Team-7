@@ -3,9 +3,9 @@
 <%
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
-java.util.List<model.UpcomingRide> rideHistory = (java.util.List<model.UpcomingRide>) request.getAttribute("rideHistory");
-if (rideHistory == null) {
-  rideHistory = java.util.Collections.emptyList();
+java.util.List<model.Ride> driverRideHistory = (java.util.List<model.Ride>) request.getAttribute("driverRideHistory");
+if (driverRideHistory == null) {
+  driverRideHistory = java.util.Collections.emptyList();
 }
 %>
 <!DOCTYPE html>
@@ -24,8 +24,8 @@ if (rideHistory == null) {
     <nav class="navbar">
       <h1 class="logo"><a href="<%= cp %>/home">Uni<span class="highlight">Ride</span></a></h1>
       <div class="nav-links dashboard-nav-links">
-        <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Passenger" %></span>
-        <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Back to Dashboard</a>
+        <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Driver" %></span>
+        <a href="<%= cp %>/dashboard/driver" class="nav-btn-secondary">Back to Dashboard</a>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
           <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
         </form>
@@ -37,7 +37,7 @@ if (rideHistory == null) {
         <section class="dashboard-section dashboard-passenger-section">
           <div class="dashboard-section-heading">
             <h3>Ride History</h3>
-            <p>Your past bookings (cancelled, declined, or completed). Leave a note on completed trips.</p>
+            <p>Past and completed trips you have offered. Leave a note on completed rides.</p>
           </div>
 
           <% if (request.getAttribute("successMessage") != null) { %>
@@ -47,47 +47,47 @@ if (rideHistory == null) {
             <p style="color:red; text-align:center;"><%= request.getAttribute("error") %></p>
           <% } %>
 
-          <% if (rideHistory.isEmpty()) { %>
+          <% if (driverRideHistory.isEmpty()) { %>
             <div class="dashboard-empty">
               <p>No ride history yet.</p>
             </div>
           <% } else { %>
             <div class="ride-list">
-              <% for (model.UpcomingRide ride : rideHistory) {
-                   String rawDeparture = ride.getDepartureDate();
-                   String formattedDeparture = rawDeparture;
-                   String formattedTime = "";
+              <% for (model.Ride ride : driverRideHistory) {
+                   String rawDep = ride.getDepartureDate();
+                   String fmtDep = rawDep;
+                   String fmtTime = "";
                    try {
                      DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
-                     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("h:mm a");
-                     LocalDateTime dt = LocalDateTime.parse(rawDeparture, parser);
-                     formattedDeparture = dt.format(dateFormatter);
-                     formattedTime = dt.format(timeFormatter);
+                     LocalDateTime dt = LocalDateTime.parse(rawDep, parser);
+                     fmtDep = dt.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
+                     fmtTime = dt.format(DateTimeFormatter.ofPattern("h:mm a"));
                    } catch (Exception ignored) {
+                   }
+                   String rawStatus = ride.getStatus();
+                   String statusLabel = "";
+                   if (rawStatus != null && !rawStatus.isBlank()) {
+                     statusLabel = rawStatus.substring(0, 1).toUpperCase() + rawStatus.substring(1).toLowerCase();
                    }
               %>
                 <div class="ride-item">
                   <div class="ride-row">
                     <div class="ride-info">
                       <strong><%= ride.getOrigin() %> → <%= ride.getDestination() %></strong><br />
-                      <small class="ride-meta">Booking ID: #<%= ride.getBookingId() %></small>
-                      <small class="ride-meta">Status: <%= ride.getBookingStatus() %></small>
-                      <small class="ride-meta">Driver: <%= ride.getDriverName() != null ? ride.getDriverName() : "Not assigned" %></small>
-                      <% if (ride.getDriverGender() != null && !ride.getDriverGender().isBlank()) { %>
-                        <small class="ride-meta">Driver gender: <%= ride.getDriverGender() %></small>
+                      <small class="ride-meta">Ride ID: #<%= ride.getId() %></small>
+                      <small class="ride-meta">Status: <%= statusLabel %></small>
+                      <small class="ride-meta">Vehicle: <%= ride.getVehicleInfo() != null ? ride.getVehicleInfo() : "—" %></small>
+                      <small class="ride-meta">Departure: <%= fmtDep %></small>
+                      <% if (!fmtTime.isBlank()) { %>
+                        <small class="ride-meta">Time: <%= fmtTime %></small>
                       <% } %>
-                      <small class="ride-meta">Vehicle: <%= ride.getVehicleInfo() != null ? ride.getVehicleInfo() : "Not assigned" %></small>
-                      <small class="ride-meta">Departure: <%= formattedDeparture %></small>
-                      <% if (!formattedTime.isBlank()) { %>
-                        <small class="ride-meta">Time: <%= formattedTime %></small>
-                      <% } %>
+                      <small class="ride-meta">Seats remaining (at snapshot): <%= ride.getSeatsLeft() %></small>
                     </div>
                   </div>
-                  <% if (ride.isReviewable()) {
-                       request.setAttribute("_reviewRideId", ride.getRideId());
-                       request.setAttribute("_reviewIsDriver", Boolean.FALSE);
-                       request.setAttribute("_reviewFormAction", cp + "/dashboard/passenger");
+                  <% if ("completed".equalsIgnoreCase(ride.getStatus())) {
+                       request.setAttribute("_reviewRideId", ride.getId());
+                       request.setAttribute("_reviewIsDriver", Boolean.TRUE);
+                       request.setAttribute("_reviewFormAction", cp + "/dashboard/driver");
                   %>
                     <jsp:include page="/WEB-INF/views/ride-reviews-section.jsp" />
                   <% } %>
@@ -101,4 +101,3 @@ if (rideHistory == null) {
   </div>
 </body>
 </html>
-

@@ -12,6 +12,8 @@ public class Ride {
     private final String status;
     private final String driverName;
     private final String vehicleInfo;
+    /** Driver gender for passenger-facing ride details; null when not applicable. */
+    private final String driverGender;
 
     /**
      * Creates a ride view model.
@@ -24,8 +26,9 @@ public class Ride {
      * @param status ride status string
      * @param driverName formatted driver display name (may be null for driver-owned lists)
      * @param vehicleInfo formatted vehicle display string (may be null for driver-owned lists)
+     * @param driverGender driver gender from profile for passenger listings; may be null
      */
-    public Ride(String id, String origin, String destination, String departureDate, int seatsLeft, String status, String driverName, String vehicleInfo) {
+    public Ride(String id, String origin, String destination, String departureDate, int seatsLeft, String status, String driverName, String vehicleInfo, String driverGender) {
         this.id = id;
         this.origin = origin;
         this.destination = destination;
@@ -34,6 +37,7 @@ public class Ride {
         this.status = status;
         this.driverName = driverName;
         this.vehicleInfo = vehicleInfo;
+        this.driverGender = driverGender;
     }
 
     public String getId() { return id; }
@@ -44,4 +48,5 @@ public class Ride {
     public String getStatus() { return status; }
     public String getDriverName() { return driverName; }
     public String getVehicleInfo() { return vehicleInfo; }
+    public String getDriverGender() { return driverGender; }
 }

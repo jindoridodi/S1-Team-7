@@ -9,12 +9,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * Handles login form rendering and session-based authentication.
  */
 @WebServlet("/login")
 public class Login extends HttpServlet {
+    /** Campus accounts only: local-part @ literal domain sjsu.edu (email is normalized to lowercase before match). */
+    private static final Pattern SJSU_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@sjsu\\.edu$");
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
@@ -30,6 +33,8 @@ public class Login extends HttpServlet {
 
         if (email.isBlank()) {
             req.setAttribute("errorEmail", "Email is required.");
+        } else if (!SJSU_EMAIL_PATTERN.matcher(email).matches()) {
+            req.setAttribute("errorEmail", "Sign in requires an @sjsu.edu email address.");
         }
 
         if (password.isBlank()) {
@@ -50,11 +55,14 @@ public class Login extends HttpServlet {
 
         // Persist the authenticated user in session for downstream guards.
         req.getSession(true).setAttribute("currentUser", user);
-        if (user.hasRole("driver")) {
-            resp.sendRedirect(req.getContextPath() + "/dashboard/driver");
-        } else {
-            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
+
+        String redirect = safe(req.getParameter("redirect"));
+        if (!redirect.isBlank() && redirect.startsWith(req.getContextPath())) {
+            resp.sendRedirect(redirect);
+            return;
         }
+
+        resp.sendRedirect(req.getContextPath() + UserRepository.primaryDashboardPathRelative(user));
     }
 
     /**

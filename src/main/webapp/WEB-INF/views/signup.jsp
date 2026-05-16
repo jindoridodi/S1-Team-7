@@ -57,7 +57,8 @@ if (roles != null) {
         <span class="campus-tag">Join UniRide</span>
         <h2>Create an account that matches your role.</h2>
         <p>
-          Register once to ride as a passenger, drive, or both. Your account stays consistent across the site.
+          Register once with your <strong>@sjsu.edu</strong> email to ride as a passenger, drive, or both.
+          Your account stays consistent across the site.
         </p>
       </div>
 
@@ -84,8 +85,8 @@ if (roles != null) {
             </div>
           </div>
 
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" value="<%= email %>" placeholder="name@sjsu.edu" />
+          <label for="email">Email (@sjsu.edu only)</label>
+          <input id="email" name="email" type="email" value="<%= email %>" placeholder="you@sjsu.edu" title="Use your San José State University email (you@sjsu.edu)" pattern="[^@\s]+@sjsu\.edu" autocomplete="email" />
           <% if (request.getAttribute("errorEmail") != null) { %><p class="field-error"><%= request.getAttribute("errorEmail") %></p><% } %>
 
           <label for="sjsuId">SJSU ID</label>

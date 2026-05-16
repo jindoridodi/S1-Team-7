@@ -1,6 +1,7 @@
 package servlet;
 
 import repository.AdminRepository;
+import repository.RideRepository;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -23,6 +24,7 @@ public class Admin extends HttpServlet {
         }
 
         req.setAttribute("pendingDrivers", AdminRepository.getPendingDrivers());
+        req.setAttribute("allRides", AdminRepository.getAllRidesForAdmin());
         req.getRequestDispatcher("/WEB-INF/views/admin.jsp").forward(req, resp);
     }
 
@@ -60,6 +62,13 @@ public class Admin extends HttpServlet {
         if ("rejectDriver".equals(action)) {
             String userId = safe(req.getParameter("userId"));
             if (!userId.isBlank()) AdminRepository.rejectDriver(userId);
+        }
+
+        if ("cancelRide".equals(action)) {
+            String rideId = safe(req.getParameter("rideId"));
+            if (!rideId.isBlank()) {
+                RideRepository.cancelRideAsAdmin(rideId);
+            }
         }
 
         if ("adminLogout".equals(action)) {

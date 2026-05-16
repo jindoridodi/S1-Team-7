@@ -17,6 +17,18 @@ import java.util.List;
 public final class NotificationRepository {
     private NotificationRepository() {}
 
+    /**
+     * Inserts an unread notification for a user within an existing transaction.
+     */
+    public static void insertNotification(Connection connection, int userId, String content) throws SQLException {
+        String sql = "INSERT INTO Notifications (User_ID, Content, Timestamp) VALUES (?, ?, NOW())";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setString(2, content);
+            ps.executeUpdate();
+        }
+    }
+
     /** Returns all notifications for a user, most recent first. */
     public static List<String[]> getNotificationsForUser(String email) {
         try (Connection c = DBConnection.get()) {

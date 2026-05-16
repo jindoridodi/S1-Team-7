@@ -219,7 +219,6 @@ CREATE TABLE `Vehicles` (
   `Model` varchar(50) DEFAULT NULL,
   `Color` varchar(20) DEFAULT NULL,
   `Total_Seats` int DEFAULT NULL,
-  `Insurance_Num` varchar(50) DEFAULT NULL,
   `Vehicle_Status` varchar(20) NOT NULL DEFAULT 'active',
   PRIMARY KEY (`Vehicle_ID`),
   KEY `fk_vehicles_driver` (`Driver_ID`),
@@ -236,4 +235,4 @@ CREATE TABLE `Vehicles` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-04 22:16:06
+-- Dump completed on 2026-05-15 18:00:06

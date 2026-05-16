@@ -9,7 +9,7 @@ User currentUser = (User) session.getAttribute("currentUser");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book a Ride | UniRide</title>
+    <title>Post Open Ride Request | UniRide</title>
     <link rel="stylesheet" href="<%= cp %>/assets/css/common.css?v=20260427" />
     <link rel="stylesheet" href="<%= cp %>/assets/css/home.css?v=20260427" />
     <link rel="stylesheet" href="<%= cp %>/assets/css/login.css?v=20260427" />
@@ -22,6 +22,9 @@ User currentUser = (User) session.getAttribute("currentUser");
             <div class="nav-links dashboard-nav-links">
                 <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Passenger" %></span>
                 <a href="<%= cp %>/dashboard/passenger" class="nav-btn-secondary">Back to Dashboard</a>
+                <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
+                    <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
+                </form>
             </div>
         </nav>
 
@@ -29,37 +32,40 @@ User currentUser = (User) session.getAttribute("currentUser");
             <div class="dashboard-main-inner">
                 <section class="dashboard-section">
                     <div class="dashboard-section-heading">
-                        <h3>Find and Book a Ride</h3>
-                        <p>Enter your trip details and we will save the booking request with the matching ride information.</p>
+                        <h3>Post an open ride request</h3>
+                        <p>
+                            Use this when no listed ride matches your trip. Drivers can see your request and offer a ride.
+                            This is not the same as searching or booking a seat on an existing listing.
+                        </p>
                     </div>
 
                     <form method="post" action="<%= cp %>/dashboard/passenger" class="settings-form booking-form">
-                        <input type="hidden" name="action" value="processCreateBooking">
+                        <input type="hidden" name="action" value="postOpenRideRequest">
 
                         <div class="form-group">
-                            <label><strong>Pickup Location (Origin)</strong></label>
+                            <label><strong>Pickup location (origin)</strong></label>
                             <input type="text" name="origin" class="login-input" placeholder="e.g. King Library" required>
                         </div>
 
                         <div class="form-group">
-                            <label><strong>Drop-off Location (Destination)</strong></label>
+                            <label><strong>Drop-off location (destination)</strong></label>
                             <input type="text" name="destination" class="login-input" placeholder="e.g. San Jose Diridon" required>
                         </div>
 
                         <div class="form-group">
-                            <label><strong>Departure Date & Time</strong></label>
+                            <label><strong>Preferred departure date &amp; time</strong></label>
                             <input type="datetime-local" name="departureDate" class="login-input" required>
                         </div>
 
                         <div class="form-group">
-                            <label><strong>Seats Needed</strong></label>
+                            <label><strong>Seats needed</strong></label>
                             <input type="number" name="seatsLeft" class="login-input" min="1" max="10" placeholder="Number of seats" required>
                         </div>
 
                         <hr class="rule">
 
                         <button type="submit" class="action-create u-w-100 u-text-center booking-submit">
-                            Book Ride
+                            Post request for drivers
                         </button>
                     </form>
                 </section>

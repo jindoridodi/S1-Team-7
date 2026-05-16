@@ -33,7 +33,7 @@ if (email == null) {
         <span class="campus-tag">Welcome back</span>
         <h2>Sign in to continue your rides.</h2>
         <p>
-          Use your UniRide account to find rides, manage your dashboard, and keep your trips organized.
+          Sign in with your <strong>@sjsu.edu</strong> email to find rides, manage your dashboard, and keep your trips organized.
         </p>
       </div>
 
@@ -43,8 +43,8 @@ if (email == null) {
         </header>
 
         <form class="login-form" method="post" action="<%= cp %>/login" novalidate>
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" value="<%= email %>" placeholder="name@sjsu.edu" />
+          <label for="email">Email (@sjsu.edu only)</label>
+          <input id="email" name="email" type="email" value="<%= email %>" placeholder="you@sjsu.edu" title="Use your San José State University email (you@sjsu.edu)" pattern="[^@\s]+@sjsu\.edu" autocomplete="email" required />
           <% if (errorEmail != null) { %><p class="field-error"><%= errorEmail %></p><% } %>
 
           <label for="password">Password</label>

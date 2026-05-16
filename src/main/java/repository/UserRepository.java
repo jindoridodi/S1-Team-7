@@ -21,6 +21,19 @@ public final class UserRepository {
     private UserRepository() {}
 
     /**
+     * Maps gender values from the signup UI to values that fit {@code Users.Gender} VARCHAR(10).
+     */
+    private static String genderValueForColumn(String uiGender) {
+        if (uiGender == null) {
+            return null;
+        }
+        if ("prefer-not-to-say".equals(uiGender)) {
+            return "not-stated";
+        }
+        return uiGender;
+    }
+
+    /**
      * Checks whether an active user account exists for the given email.
      *
      * @param email user email
@@ -49,7 +62,7 @@ public final class UserRepository {
      * @param lastName last name
      * @param email email address (used as login key)
      * @param sjsuId campus identifier
-     * @param gender user gender string as provided by UI
+     * @param gender user gender string as provided by UI (normalized to fit VARCHAR(10) before insert)
      * @param password plaintext password (validated and hashed)
      * @param roles set containing driver and/or passenger
      * @param licenseNumber required when creating a driver role
@@ -68,6 +81,8 @@ public final class UserRepository {
         if (hasUser(email)) return null;
         if (!PasswordUtil.isStrongPassword(password)) throw new IllegalArgumentException("password does not meet policy");
 
+        String genderStored = genderValueForColumn(gender);
+
         /* Creates the base user record as an active account (roles are inserted separately below). */
         String insertUser =
                 "INSERT INTO Users (SJSU_ID, First_Name, Last_Name, Email, Gender, " +
@@ -83,7 +98,7 @@ public final class UserRepository {
                 ps.setString(2, firstName);
                 ps.setString(3, lastName);
                 ps.setString(4, email);
-                ps.setString(5, gender);
+                ps.setString(5, genderStored);
                 ps.setString(6, passwordHash);
                 ps.executeUpdate();
 
@@ -95,7 +110,6 @@ public final class UserRepository {
 
             if (roles.contains("driver")) {
                 try (PreparedStatement pd = c.prepareStatement(
-                        /* Adds driver role details; verification is pending until admin approval. */
                         "INSERT INTO Drivers (User_ID, License_Number, Verification_Status, Driver_Rating) VALUES (?, ?, 'pending', 0.0)")) {
                     pd.setInt(1, userId);
                     pd.setString(2, licenseNumber);
@@ -113,7 +127,7 @@ public final class UserRepository {
 
             LogRepository.logUser("ACCOUNT_CREATED", userId, "New account: " + email);
 
-            return new User(firstName, lastName, email, sjsuId, gender, passwordHash, roles);
+            return new User(firstName, lastName, email, sjsuId, genderStored, passwordHash, roles);
 
         } catch (SQLException e) {
             throw new RuntimeException("createUser failed", e);
@@ -233,6 +247,35 @@ public final class UserRepository {
         } catch (SQLException e) {
             throw new RuntimeException("getDriverVerificationStatus failed", e);
         }
+    }
+
+    /**
+     * True when the email belongs to an active driver row approved by an admin.
+     */
+    public static boolean isVerifiedDriver(String email) {
+        String s = getDriverVerificationStatus(email);
+        return s != null && "verified".equalsIgnoreCase(s.trim());
+    }
+
+    /**
+     * Primary dashboard URL path (no context) after login or for nav: passenger dashboard is used when the user
+     * is not yet an approved driver (including passenger-only and passenger+pending-driver).
+     */
+    public static String primaryDashboardPathRelative(User user) {
+        if (user == null) {
+            return "/login";
+        }
+        boolean verifiedDriver = user.hasRole("driver") && isVerifiedDriver(user.getEmail());
+        if (user.hasRole("passenger") && !verifiedDriver) {
+            return "/dashboard/passenger";
+        }
+        if (verifiedDriver) {
+            return "/dashboard/driver";
+        }
+        if (user.hasRole("driver")) {
+            return "/dashboard/passenger";
+        }
+        return "/dashboard/passenger";
     }
 }
 

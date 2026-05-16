@@ -6,7 +6,6 @@
 String cp = request.getContextPath();
 User currentUser = (User) session.getAttribute("currentUser");
 List<Vehicle> vehicles = (List<Vehicle>) request.getAttribute("vehicles");
-boolean canSwapDashboard = currentUser != null && currentUser.hasRole("driver") && currentUser.hasRole("passenger");
 if (vehicles == null) {
   vehicles = java.util.Collections.emptyList();
 }
@@ -28,7 +27,6 @@ if (vehicles == null) {
       <h1 class="logo"><a href="<%= cp %>/home">Uni<span class="highlight">Ride</span></a></h1>
       <div class="nav-links dashboard-nav-links">
         <span class="dashboard-welcome">Welcome <%= currentUser != null ? currentUser.getFirstName() : "Driver" %></span>
-        <a href="<%= cp %>/settings" class="nav-btn-primary dashboard-settings">Settings</a>
         <a href="<%= cp %>/dashboard/driver" class="nav-btn-secondary">Back to Dashboard</a>
         <form method="post" action="<%= cp %>/logout" class="dashboard-inline-form">
           <button type="submit" class="nav-btn-secondary dashboard-signout">Sign Out</button>
