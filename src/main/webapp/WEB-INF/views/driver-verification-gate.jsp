@@ -34,11 +34,11 @@ String verificationMessage = request.getAttribute("verificationMessage") != null
 
     <div class="dashboard-main">
       <div class="dashboard-main-inner">
-        <section class="dashboard-hero dashboard-section">
-          <div class="dashboard-hero-copy">
+        <section class="dashboard-hero dashboard-section driver-gate-hero">
+          <div class="dashboard-hero-copy driver-gate-copy">
             <h2>Driver dashboard locked</h2>
             <p><%= verificationMessage %></p>
-            <div class="dashboard-actions u-mt-lg">
+            <div class="dashboard-actions u-mt-lg driver-gate-actions">
               <% if (currentUser != null && currentUser.hasRole("passenger")) { %>
                 <a class="login-submit action-bookings u-inline-flex-center" href="<%= cp %>/dashboard/passenger">
                   Go to passenger dashboard

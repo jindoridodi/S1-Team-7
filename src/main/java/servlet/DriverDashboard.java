@@ -47,15 +47,11 @@ public class DriverDashboard extends HttpServlet {
             return;
         }
         if (!UserRepository.isVerifiedDriver(user.getEmail())) {
-            String verification = UserRepository.getDriverVerificationStatus(user.getEmail());
-            req.setAttribute(
-                    "verificationMessage",
-                    "rejected".equalsIgnoreCase(verification)
-                            ? "Your driver registration was rejected. You cannot host rides on UniRide."
-                            : "Your driver registration is awaiting admin approval. You will unlock the driver dashboard once an administrator verifies your license.");
-            req.getRequestDispatcher("/WEB-INF/views/driver-verification-gate.jsp").forward(req, resp);
+            resp.sendRedirect(req.getContextPath() + "/dashboard/passenger");
             return;
         }
+
+        req.setAttribute("driverVerified", Boolean.TRUE);
 
         String error = safe(req.getParameter("error"));
         if ("requestNotProcessed".equals(error)) {

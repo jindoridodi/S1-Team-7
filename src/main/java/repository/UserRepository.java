@@ -273,7 +273,7 @@ public final class UserRepository {
             return "/dashboard/driver";
         }
         if (user.hasRole("driver")) {
-            return "/dashboard/driver";
+            return "/dashboard/passenger";
         }
         return "/dashboard/passenger";
     }

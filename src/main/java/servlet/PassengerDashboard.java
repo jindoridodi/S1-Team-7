@@ -24,6 +24,7 @@ import repository.NotificationRepository;
 import repository.RideRepository;
 import repository.ReviewRepository;
 import repository.SavedRouteRepository;
+import repository.UserRepository;
 
 /**
  * Passenger dashboard page for authenticated non-driver users.
@@ -42,6 +43,8 @@ public class PassengerDashboard extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/login?redirect=" + redirect);
             return;
         }
+
+        req.setAttribute("driverVerified", user.hasRole("driver") && UserRepository.isVerifiedDriver(user.getEmail()));
 
         String action = safe(req.getParameter("action"));
 

@@ -203,6 +203,39 @@
   margin: 0;
 }
 
+.driver-gate-hero {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.driver-gate-copy {
+  padding-right: 0;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-lg);
+}
+
+.driver-gate-copy p {
+  max-width: 640px;
+}
+
+.driver-gate-actions {
+  justify-content: center;
+  width: 100%;
+}
+
+.driver-gate-actions .login-submit,
+.driver-gate-actions .nav-btn-secondary {
+  min-width: 240px;
+  justify-content: center;
+  text-align: center;
+}
+
 .dashboard-passenger-section {
   padding-top: 0;
 }
