@@ -86,6 +86,12 @@
   font-size: var(--font-size-sm);
 }
 
+.dashboard-role-switch-ui {
+  cursor: default;
+  pointer-events: none;
+  font-family: inherit;
+}
+
 .dashboard-inline-form {
   margin: 0;
   display: inline;
