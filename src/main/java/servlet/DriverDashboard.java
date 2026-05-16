@@ -150,14 +150,12 @@ public class DriverDashboard extends HttpServlet {
             String color = safe(req.getParameter("color"));
             String plate = safe(req.getParameter("plate"));
             String totalSeats = safe(req.getParameter("totalSeats"));
-            // Include insurance field from your database
-            String insuranceNum = safe(req.getParameter("insuranceNum")); 
 
             if (!make.isBlank() && !model.isBlank() && !color.isBlank() && !plate.isBlank() && !totalSeats.isBlank()) {
                 try {
                     int seats = Integer.parseInt(totalSeats);
                     if (seats > 0) {
-                        VehicleRepository.addVehicle(user.getEmail(), make, model, color, plate, seats, insuranceNum);
+                        VehicleRepository.addVehicle(user.getEmail(), make, model, color, plate, seats);
                     }
                 } catch (NumberFormatException ignored) {
                     // Ignore invalid seat counts and fall through to the redirect.
@@ -180,13 +178,12 @@ public class DriverDashboard extends HttpServlet {
             String color = safe(req.getParameter("color"));
             String plate = safe(req.getParameter("plate"));
             String totalSeats = safe(req.getParameter("totalSeats"));
-            String insuranceNum = safe(req.getParameter("insuranceNum"));
 
             if (!vehicleId.isBlank() && !make.isBlank() && !model.isBlank() && !color.isBlank() && !plate.isBlank() && !totalSeats.isBlank()) {
                 try {
                     int seats = Integer.parseInt(totalSeats);
                     if (seats > 0) {
-                        VehicleRepository.updateVehicle(user.getEmail(), vehicleId, make, model, color, plate, seats, insuranceNum);
+                        VehicleRepository.updateVehicle(user.getEmail(), vehicleId, make, model, color, plate, seats);
                     }
                 } catch (NumberFormatException ignored) {
                     // Ignore invalid seat counts and fall through to the redirect.
